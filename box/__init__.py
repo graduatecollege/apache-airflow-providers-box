@@ -1,17 +1,18 @@
 __version__ = "1.0.0"
 
+
+
 ## This is needed to allow Airflow to pick up specific metadata fields it needs for certain features.
 def get_provider_info():
     return {
-        "package-name": "apache-airflow-provider-box",  # Required
-        "name": "Sample",  # Required
+        "package-name": "airflow-provider-box",  # Required
+        "name": "Box",  # Required
         "description": "A sample template for Apache Airflow providers.",  # Required
         "connection-types": [
             {
-                "connection-type": "sample",
-                "hook-class-name": "sample_provider.hooks.sample.SampleHook"
+                "connection-type": "box",
+                "hook-class-name": "box.hooks.box.BoxHook"
             }
         ],
-        "extra-links": ["sample_provider.operators.sample.SampleOperatorExtraLink"],
         "versions": [__version__],  # Required
     }

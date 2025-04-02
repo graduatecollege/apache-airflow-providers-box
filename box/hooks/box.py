@@ -1,17 +1,27 @@
 from __future__ import annotations
 
-from typing import Any, Tuple, Literal, NamedTuple, Optional, Generic, TypeVar, Dict
+from typing import Any, Tuple, Literal, NamedTuple, Optional, Generic, TypeVar, Dict, TypedDict
+import os
+from dataclasses import dataclass
 
-import requests
 from boxsdk import Client, CCGAuth
 from requests.auth import HTTPBasicAuth
 
 from airflow.hooks.base import BaseHook
 
-T = TypeVar('T')
 
+@dataclass
+class BoxFileInfo:
+    """Information about a Box file."""
+    name: str
+    type: str
+    size: int
+    created_at: str
+    modified_at: str
+    path: str
+    updated: bool
 
-class BoxResult(Generic[T]):
+class BoxResult[T]:
     """
     Generic result object for Box operations.
     
@@ -79,7 +89,7 @@ class BoxHook(BaseHook):
         import json
 
         return {
-            "hidden_fields": ["port", "password", "login", "schema"],
+            "hidden_fields": ["port", "password", "login", "schema", "host"],
             "relabeling": {},
             "placeholders": {
                 "client_id": "",
@@ -238,3 +248,76 @@ class BoxHook(BaseHook):
 
         except Exception as e:
             return BoxResult(error_message=str(e))
+
+    def upload_file(self, local_file_path: str, box_path: str) -> BoxResult[BoxFileInfo]:
+        """
+        Upload a file to Box.
+
+        :param local_file_path: Path to the local file to upload
+        :param box_path: Destination path in Box (e.g. "/Test/Area/document.pdf")
+        :return: BoxResult with the uploaded file information
+        """
+        try:
+            client = self.get_conn()
+            
+            # Extract folder path and filename from box_path
+            box_directory, filename = os.path.split(box_path.strip('/'))
+            box_directory = '/' + box_directory if box_directory else '/'
+
+            if not filename:
+                return BoxResult(
+                    error_message="Must provide full path to Box file including filename"
+                )
+            
+            # Get folder ID for the destination path
+            folder_result = self.get_folder_id(box_directory)
+            
+            if not folder_result.success or folder_result.id is None:
+                return BoxResult(
+                    error_message=folder_result.error_message or f"Could not find destination folder: {box_directory}"
+                )
+            
+            folder_id = folder_result.id
+            
+            # Check if file already exists and perform update if it does
+            existing_items = client.folder(folder_id=folder_id).get_items()
+            file_already_exists = False
+            existing_file_id = None
+            
+            for item in existing_items:
+                if item.name == filename:
+                    if item.type == 'File':
+                        file_already_exists = True
+                        existing_file_id = item.id
+                    elif item.type == 'Folder':
+                        # If a folder with the same name exists, we cannot upload a file with that name
+                        return BoxResult(
+                            error_message=f"A folder with the name '{filename}' already exists in the destination path."
+                        )
+                    break
+
+            if file_already_exists and existing_file_id:
+                uploaded_file = client.file(file_id=existing_file_id).update_contents(local_file_path)
+            else:
+                uploaded_file = client.folder(folder_id=folder_id).upload(local_file_path, filename)
+
+            file_info = BoxFileInfo(
+                name=uploaded_file.name,
+                type=uploaded_file.type,
+                size=uploaded_file.size,
+                created_at=uploaded_file.created_at,
+                modified_at=uploaded_file.modified_at,
+                path=box_path,
+                updated=file_already_exists
+            )
+            
+            return BoxResult(
+                id=uploaded_file.id,
+                result=file_info
+            )
+            
+        except Exception as e:
+            return BoxResult(error_message=f"Error uploading file: {str(e)}")
+
+
+

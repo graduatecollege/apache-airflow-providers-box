@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "airflow-provider-sample"
+name = "airflow-provider-box"
 authors = [
     { name = "Pete DeJoy", email = "pete@astronomer.io" },
     { name = "Josh Fell", email = "josh.d.fell@astronomer.io" },
@@ -30,7 +30,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://astronomer.io"
-Source = "https://github.com/astronomer/airflow-provider-sample/"
+Source = "https://github.com/astronomer/airflow-provider-box/"
 
 [project.readme]
 file = "README.md"

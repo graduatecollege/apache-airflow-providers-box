@@ -77,7 +77,7 @@ If you followed the formatting guidelines above, you're now ready to start editi
 
 ### Python Packaging Scripts
 
-Your `pyproject.toml` file should contain all of the appropriate metadata and dependencies required to build your package. Use the [sample `pyproject.toml` file](https://github.com/astronomer/airflow-provider-sample/blob/main/pyproject.toml) in this repository as a starting point for your own project.
+Your `pyproject.toml` file should contain all of the appropriate metadata and dependencies required to build your package. Use the [sample `pyproject.toml` file](https://github.com/astronomer/airflow-provider-box/blob/main/pyproject.toml) in this repository as a starting point for your own project.
 
 To improve discoverability of your provider package on PyPI, it is recommended to [add classifiers](https://packaging.python.org/en/latest/tutorials/packaging-projects/#configuring-metadata) to the package's metadata. The following standard classifiers should be used in addition to any others you may choose to include:
 
@@ -136,7 +136,7 @@ __version__ = "1.0.0"
 
 def get_provider_info():
     return {
-        "package-name": "airflow-provider-sample",  # Required
+        "package-name": "airflow-provider-box",  # Required
         "name": "Sample",  # Required
         "description": "A sample template for Apache Airflow providers.",  # Required
         "connection-types": [
@@ -245,7 +245,7 @@ Every Python module, including all hooks, operators, sensors, and transfers, sho
 - A longer description explaining how the module works. This can include details such as code blocks or blockquotes. For more information Sphinx markdown directives, read the [Sphinx documentation](https://www.sphinx-doc.org/en/master/usage/restructuredtext/directives.html#directive-code-block).
 - A declarative definition of parameters that you can pass to the module, templated per the example below.
 
-For a full example of inline module documentation, see the [example operator in this repository](https://github.com/astronomer/airflow-provider-sample/blob/main/sample_provider/operators/sample_operator.py#L11).
+For a full example of inline module documentation, see the [example operator in this repository](https://github.com/astronomer/airflow-provider-box/blob/main/sample_provider/operators/sample_operator.py#L11).
 
 ### README
 
