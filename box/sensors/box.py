@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING, Any
 from airflow.exceptions import AirflowException
 from airflow.sensors.base import BaseSensorOperator
 
-from sample_provider.hooks.sample import SampleHook
-
 if TYPE_CHECKING:
     from airflow.utils.context import Context
 
