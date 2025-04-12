@@ -1,17 +1,13 @@
-from __future__ import annotations
-
-from typing import Any, Tuple, Literal, NamedTuple, Optional, Generic, TypeVar, Dict, TypedDict
 import os
-from dataclasses import dataclass
-
-from boxsdk import Client, CCGAuth
-from requests.auth import HTTPBasicAuth
+from os.path import relpath
+from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
+from boxsdk import Client, CCGAuth
+from pydantic import BaseModel
 
 
-@dataclass
-class BoxFileInfo:
+class BoxFileInfo(BaseModel):
     """Information about a Box file."""
     name: str
     type: str
@@ -20,6 +16,7 @@ class BoxFileInfo:
     modified_at: str
     path: str
     updated: bool
+
 
 class BoxResult[T]:
     """
@@ -36,15 +33,19 @@ class BoxResult[T]:
             id: str | None = None,
             success: bool | None = None,
             result: T | None = None,
-            error_message: str | None = None
+            error_message: str | None = None,
+            exception: Exception | None = None,
     ):
         self.id = id
         self.success = success
         self.result = result
         self.error_message = error_message
+        self.exception = exception
 
         if success is None:
             if error_message is not None:
+                self.success = False
+            elif exception is not None:
                 self.success = False
             elif result is not None or id is not None:
                 self.success = True
@@ -53,6 +54,42 @@ class BoxResult[T]:
 
     def __bool__(self) -> bool:
         return self.success
+
+    def raise_if_error(self):
+        if self.exception is not None:
+            raise self.exception
+        if not self.success:
+            if self.error_message is not None:
+                raise Exception(self.error_message)
+            raise Exception("BoxResult not successful, but no specific error message was given")
+
+    def to_dict(self) -> dict:
+        """
+        Convert the BoxResult instance to a dictionary for JSON serialization.
+        """
+        return {
+            "id": self.id,
+            "success": self.success,
+            "result": self.result,
+            "error_message": self.error_message,
+            "exception": self.exception,
+        }
+
+    def __repr__(self) -> str:
+        """
+        Provide a string representation of the BoxResult instance.
+        """
+        return str(self.to_dict())
+
+    def serialize(self) -> dict[str, Any]:
+        return self.to_dict()
+
+    @staticmethod
+    def deserialize(data: dict):
+        """
+        Deserialize data to a BoxResult
+        """
+        return BoxResult(**data)
 
 
 class BoxHook(BaseHook):
@@ -65,10 +102,6 @@ class BoxHook(BaseHook):
     default_conn_name = "box_default"
     conn_type = "box"
     hook_name = "Box"
-
-    def __init__(self, box_conn_id: str = default_conn_name, *args, **kwargs):
-        super().__init__()
-        self.client: Client | None = None
 
     @staticmethod
     def get_connection_form_widgets() -> dict[str, Any]:
@@ -86,7 +119,6 @@ class BoxHook(BaseHook):
     @staticmethod
     def get_ui_field_behaviour() -> dict:
         """Returns custom field behaviour"""
-        import json
 
         return {
             "hidden_fields": ["port", "password", "login", "schema", "host"],
@@ -104,14 +136,15 @@ class BoxHook(BaseHook):
     ) -> None:
         super().__init__()
         self.box_conn_id = box_conn_id
+        self.client: Client | None = None
 
     def get_conn(self) -> Client:
         if self.box_conn_id and not self.client:
             conn = self.get_connection(self.box_conn_id)
-
-            client_id = conn.client_id
-            client_secret = conn.client_secret
-            enterprise_id = conn.enterprise_id
+            extra = conn.get_extra_dejson()
+            client_id = extra['client_id']
+            client_secret = extra['client_secret']
+            enterprise_id = extra['enterprise_id']
 
             if not client_id or not client_secret or not enterprise_id:
                 raise ValueError("Client ID, Client Secret and Enterprise ID must be provided in connection")
@@ -136,18 +169,21 @@ class BoxHook(BaseHook):
         except Exception as e:
             return False, str(e)
 
-    def get_item_id(self, path: str, item_type: Literal['file', 'folder']) -> BoxResult[None]:
+    def get_item_id(self, path: str, item_type: Literal['file', 'folder'], return_deepest_existing: bool = False) -> \
+            BoxResult[str | None]:
         """
         Get the ID of a Box item (file or folder) based on a path.
 
         :param path: Path to the item (e.g. "/Test/Area" or "/Test/Area/document.pdf")
         :param item_type: Type of item to look for, either 'file' or 'folder'
-        :return: BoxResult containing the ID of the target item if found
+        :param return_deepest_existing: If True, return the path and ID of the deepest existing folder
+        :return: BoxResult containing the ID of the target item if found, or the deepest existing folder if specified
         """
         try:
             client = self.get_conn()
 
             current_folder_id = '0'
+            current_path = '/'
 
             clean_path = path.strip('/')
             if not clean_path:
@@ -178,10 +214,13 @@ class BoxHook(BaseHook):
                 for item in items:
                     if item.type == 'folder' and item.name == folder_name:
                         current_folder_id = item.id
+                        current_path = f"{current_path.rstrip('/')}/{folder_name}"
                         found = True
                         break
 
                 if not found:
+                    if return_deepest_existing:
+                        return BoxResult(result=current_path, id=current_folder_id)
                     return BoxResult(
                         error_message=f"Folder '{folder_name}' not found in path '{path}'"
                     )
@@ -200,7 +239,7 @@ class BoxHook(BaseHook):
 
             return BoxResult(id=current_folder_id)
         except Exception as e:
-            return BoxResult(error_message=str(e))
+            return BoxResult(exception=e)
 
     def get_folder_id(self, path: str) -> BoxResult[None]:
         """
@@ -247,7 +286,7 @@ class BoxHook(BaseHook):
             )
 
         except Exception as e:
-            return BoxResult(error_message=str(e))
+            return BoxResult(exception=e)
 
     def upload_file(self, local_file_path: str, box_path: str) -> BoxResult[BoxFileInfo]:
         """
@@ -259,7 +298,7 @@ class BoxHook(BaseHook):
         """
         try:
             client = self.get_conn()
-            
+
             # Extract folder path and filename from box_path
             box_directory, filename = os.path.split(box_path.strip('/'))
             box_directory = '/' + box_directory if box_directory else '/'
@@ -268,22 +307,22 @@ class BoxHook(BaseHook):
                 return BoxResult(
                     error_message="Must provide full path to Box file including filename"
                 )
-            
+
             # Get folder ID for the destination path
             folder_result = self.get_folder_id(box_directory)
-            
+
             if not folder_result.success or folder_result.id is None:
                 return BoxResult(
                     error_message=folder_result.error_message or f"Could not find destination folder: {box_directory}"
                 )
-            
+
             folder_id = folder_result.id
-            
+
             # Check if file already exists and perform update if it does
             existing_items = client.folder(folder_id=folder_id).get_items()
             file_already_exists = False
             existing_file_id = None
-            
+
             for item in existing_items:
                 if item.name == filename:
                     if item.type == 'File':
@@ -310,14 +349,77 @@ class BoxHook(BaseHook):
                 path=box_path,
                 updated=file_already_exists
             )
-            
+
             return BoxResult(
                 id=uploaded_file.id,
                 result=file_info
             )
-            
+
         except Exception as e:
-            return BoxResult(error_message=f"Error uploading file: {str(e)}")
+            return BoxResult(error_message=f"Error uploading file: {str(e)}", exception=e)
 
+    def create_folders_recursively(self, path: str) -> BoxResult[str]:
+        """
+        Create folders recursively based on the given path.
 
+        :param path: The full path of the folder to create (e.g., "/Parent/Child/Grandchild").
+        :return: BoxResult containing the ID of the final folder created or found.
+        """
+        try:
+            client = self.get_conn()
 
+            # Find the deepest existing folder
+            folder_result = self.get_item_id(path, item_type='folder', return_deepest_existing=True)
+            if not folder_result.success:
+                return folder_result
+
+            current_folder_id = folder_result.id
+            current_path = folder_result.result or '/'
+
+            # Get the remaining path to create
+            remaining_path = relpath(path, current_path).strip('/')
+            if remaining_path == '.':
+                return BoxResult(id=current_folder_id)  # All folders already exist
+
+            # Create the remaining folders
+            for folder_name in remaining_path.split('/'):
+                folder = client.folder(folder_id=current_folder_id).create_subfolder(folder_name)
+                current_folder_id = folder.id
+
+            return BoxResult(id=current_folder_id)
+
+        except Exception as e:
+            return BoxResult(exception=e)
+
+    def download_file(self, box_path: str, local_file_path: str) -> BoxResult[None]:
+        """
+        Download a file from Box and save it to a local file path.
+
+        :param box_path: Path to the file in Box (e.g., "/Test/Area/document.pdf") or a numeric string representing the file ID.
+        :param local_file_path: Path to save the downloaded file locally.
+        :return: BoxResult with the ID of the Box file if successful.
+        """
+        try:
+            # Check if box_path is a numeric string (file ID)
+            if box_path.isdigit():
+                file_id = box_path
+            else:
+                # Resolve file ID from path
+                file_result = self.get_file_id(box_path)
+                if not file_result.success:
+                    return file_result
+                if not file_result.id:
+                    return BoxResult(
+                        error_message="Box file ID is None, cannot download file"
+                    )
+                file_id = file_result.id
+
+            client = self.get_conn()
+            box_file = client.file(file_id=file_id)
+
+            with open(local_file_path, "wb") as local_file:
+                box_file.download_to(local_file)
+
+            return BoxResult(id=box_file.id)
+        except Exception as e:
+            return BoxResult(error_message=f"Error downloading file: {str(e)}", exception=e)

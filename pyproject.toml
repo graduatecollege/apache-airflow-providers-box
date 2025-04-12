@@ -6,15 +6,13 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "airflow-provider-box"
+name = "box-airflow-provider"
 authors = [
-    { name = "Pete DeJoy", email = "pete@astronomer.io" },
-    { name = "Josh Fell", email = "josh.d.fell@astronomer.io" },
-    { name = "Astronomer", email = "humans@astronomer.io" },
+    { name = "Mikael Arvola", email = "marvel@illinois.edu" },
 
 ]
 license = { text = "Apache License 2.0" }
-description = "A sample Apache Airflow provider package built by Astronomer."
+description = "Box.com provider for Apache Airflow."
 classifiers = [
     "Framework :: Apache Airflow",
     "Framework :: Apache Airflow :: Provider",
@@ -25,28 +23,19 @@ dynamic = [
 requires-python = "~=3.12"
 dependencies = [
     "apache-airflow>=2.4",
-    "boxsdk~=3.13.0"
+    "boxsdk~=3.13.0",
+    "pydantic~=2.11.3"
 ]
 
 [project.urls]
-Homepage = "https://astronomer.io"
-Source = "https://github.com/astronomer/airflow-provider-box/"
+Source = "https://github.com/graduatecollege/apache-airflow-providers-box"
 
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
 
 [project.entry-points.apache_airflow_provider]
-provider_info = "box.__init__:get_provider_info"
-
-[tool.setuptools]
-include-package-data = false
+provider_info = "box_airflow_provider.__init__:get_provider_info"
 
 [tool.setuptools.dynamic]
-version = { attr = "box.__version__" }
-
-[tool.setuptools.packages.find]
-exclude = [
-    "*tests.*",
-    "*tests"
-]
+version = { attr = "box_airflow_provider.__version__" }

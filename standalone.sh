@@ -3,6 +3,6 @@
 . .venv/bin/activate
 
 export AIRFLOW_HOME=$(pwd)/airflow
-export PYTHONPATH="$PYTHONPATH:$(pwd)"
+export PYTHONPATH="$PYTHONPATH:$(pwd)/src"
 
 airflow standalone
