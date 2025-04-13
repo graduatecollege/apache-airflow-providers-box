@@ -1,14 +1,11 @@
-from typing import Any
-
 from airflow.exceptions import AirflowException
-from airflow.models import BaseOperator, BaseOperatorLink
+from airflow.models import BaseOperator
 from airflow.utils.context import Context
 
 from box_airflow_provider.hooks.box import BoxHook, BoxFileInfo
 
 
 class BoxUploadOperator(BaseOperator):
-    # Specify the arguments that are allowed to parse with jinja templating
     template_fields = [
         "local_path",
         "box_path",
@@ -36,7 +33,20 @@ class BoxUploadOperator(BaseOperator):
 
         response = hook.upload_file(self.local_path, self.box_path)
 
-        if not response:
-            raise AirflowException("Upload failed: " + response.error_message)
+        if not response.success:
+            raise response.exception or AirflowException("Upload failed: " + response.error_message)
+
+        return response.result
+
+
+class BoxDownloadOperator(BoxUploadOperator):
+
+    def execute(self, context: Context) -> BoxFileInfo:
+        hook = BoxHook(box_conn_id=self.box_conn_id)
+
+        response = hook.download_file(self.box_path, self.local_path)
+
+        if not response.success:
+            raise response.exception or AirflowException("Download failed: " + response.error_message)
 
         return response.result

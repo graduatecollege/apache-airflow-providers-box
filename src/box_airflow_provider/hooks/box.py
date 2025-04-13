@@ -1,5 +1,6 @@
+import fnmatch
 import os
-from os.path import relpath
+from os.path import relpath, join
 from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
@@ -15,7 +16,7 @@ class BoxFileInfo(BaseModel):
     created_at: str
     modified_at: str
     path: str
-    updated: bool
+    new: bool
 
 
 class BoxResult[T]:
@@ -169,16 +170,29 @@ class BoxHook(BaseHook):
         except Exception as e:
             return False, str(e)
 
-    def get_item_id(self, path: str, item_type: Literal['file', 'folder'], return_deepest_existing: bool = False) -> \
-            BoxResult[str | None]:
+    def get_item_id(self, path: str, item_type: Literal['file', 'folder']) -> BoxResult[None]:
         """
-        Get the ID of a Box item (file or folder) based on a path.
+        Get the ID of a Box item (file or folder) based on a path. This will
+        return an error result if the item does not exist.
 
         :param path: Path to the item (e.g. "/Test/Area" or "/Test/Area/document.pdf")
         :param item_type: Type of item to look for, either 'file' or 'folder'
-        :param return_deepest_existing: If True, return the path and ID of the deepest existing folder
-        :return: BoxResult containing the ID of the target item if found, or the deepest existing folder if specified
+        :return: BoxResult containing the ID of the target item if found
         """
+        return self._get_item_id(path, item_type=item_type, return_deepest_existing=False)
+
+    def get_existing_item_id(self, path: str, item_type: Literal['file', 'folder']) -> BoxResult[str]:
+        """
+        Get the ID of an existing Box item (file or folder) based on a path.
+
+        :param path: Path to the item (e.g. "/Test/Area" or "/Test/Area/document.pdf")
+        :param item_type: Type of item to look for, either 'file' or 'folder'
+        :return: BoxResult containing the ID of the target item if found
+        """
+        return self._get_item_id(path, item_type=item_type, return_deepest_existing=True)
+
+    def _get_item_id(self, path: str, item_type: Literal['file', 'folder'], return_deepest_existing: bool = False) -> \
+            BoxResult[str | None]:
         try:
             client = self.get_conn()
 
@@ -213,7 +227,7 @@ class BoxHook(BaseHook):
                 found = False
                 for item in items:
                     if item.type == 'folder' and item.name == folder_name:
-                        current_folder_id = item.id
+                        current_folder_id = item.object_id
                         current_path = f"{current_path.rstrip('/')}/{folder_name}"
                         found = True
                         break
@@ -231,7 +245,7 @@ class BoxHook(BaseHook):
 
                 for item in items:
                     if item.type == 'file' and item.name == file_name:
-                        return BoxResult(id=item.id)
+                        return BoxResult(id=item.object_id)
 
                 return BoxResult(
                     error_message=f"File '{file_name}' not found in folder"
@@ -259,6 +273,35 @@ class BoxHook(BaseHook):
         """
         return self.get_item_id(path, 'file')
 
+    def get_file_info(self, path: str) -> BoxResult[BoxFileInfo]:
+        """
+        Get the Box file information based on a path.
+
+        :param path: Path to the file (e.g. "/Test/Area/document.pdf")
+        :return: BoxResult with the file information if successful
+        """
+        try:
+            # First, get the file ID using the existing function
+            file_result = self.get_file_id(path)
+
+            if not file_result.success:
+                return file_result
+
+            # Get the file info
+            client = self.get_conn()
+            box_file = client.file(file_id=file_result.id).get()
+
+            # Convert to BoxFileInfo object
+            file_info = box_file_to_file_info(box_file, path)
+
+            return BoxResult(
+                id=box_file.object_id,
+                result=file_info
+            )
+
+        except Exception as e:
+            return BoxResult(exception=e)
+
     def get_file_modified_time(self, path: str) -> BoxResult[str]:
         """
         Get the last modified time of a Box file based on a path.
@@ -266,24 +309,41 @@ class BoxHook(BaseHook):
         :param path: Path to the file (e.g. "/Test/Area/document.pdf")
         :return: BoxResult with the file's modified time as the result if successful
         """
-        try:
-            # First, get the file ID using the existing function
-            file_result = self.get_file_id(path)
+        file_info = self.get_file_info(path)
+        if not file_info.success:
+            return file_info
 
-            if not file_result.success or file_result.id is None:
+        return BoxResult(
+            id=file_info.id,
+            result=file_info.result.modified_at
+        )
+
+    def get_files_by_pattern(self, path: str, file_pattern: str) -> BoxResult[list[BoxFileInfo]]:
+        """
+        Get a list of Box files matching a pattern in a given folder.
+
+        :param path: Path to the folder (e.g. "/Test/Area")
+        :param file_pattern: Pattern to match files against (e.g. "*.pdf")
+        :return: BoxResult with a list of matching BoxFileInfo objects
+        """
+        try:
+            client = self.get_conn()
+            folder_result = self.get_folder_id(path)
+
+            if not folder_result.success or folder_result.id is None:
                 return BoxResult(
-                    error_message=file_result.error_message or "File not found"
+                    error_message=folder_result.error_message or f"Could not find folder: {path}"
                 )
 
-            # Get the file info
-            client = self.get_conn()
-            file_info = client.file(file_id=file_result.id).get()
+            folder_id = folder_result.id
+            items = client.folder(folder_id=folder_id).get_items()
 
-            # Return the result with file ID and its modified time
-            return BoxResult(
-                id=file_info.id,
-                result=file_info.modified_at
-            )
+            matching_files = []
+            for item in items:
+                if item.type == 'file' and fnmatch.fnmatch(item.name, file_pattern):
+                    matching_files.append(box_file_to_file_info(item, join(path, item.name)))
+
+            return BoxResult(result=matching_files)
 
         except Exception as e:
             return BoxResult(exception=e)
@@ -327,7 +387,7 @@ class BoxHook(BaseHook):
                 if item.name == filename:
                     if item.type == 'File':
                         file_already_exists = True
-                        existing_file_id = item.id
+                        existing_file_id = item.object_id
                     elif item.type == 'Folder':
                         # If a folder with the same name exists, we cannot upload a file with that name
                         return BoxResult(
@@ -340,25 +400,18 @@ class BoxHook(BaseHook):
             else:
                 uploaded_file = client.folder(folder_id=folder_id).upload(local_file_path, filename)
 
-            file_info = BoxFileInfo(
-                name=uploaded_file.name,
-                type=uploaded_file.type,
-                size=uploaded_file.size,
-                created_at=uploaded_file.created_at,
-                modified_at=uploaded_file.modified_at,
-                path=box_path,
-                updated=file_already_exists
-            )
+            file_info = box_file_to_file_info(uploaded_file, box_path)
+            file_info.new = not file_already_exists
 
             return BoxResult(
-                id=uploaded_file.id,
+                id=uploaded_file.object_id,
                 result=file_info
             )
 
         except Exception as e:
             return BoxResult(error_message=f"Error uploading file: {str(e)}", exception=e)
 
-    def create_folders_recursively(self, path: str) -> BoxResult[str]:
+    def create_folder(self, path: str) -> BoxResult[str]:
         """
         Create folders recursively based on the given path.
 
@@ -369,7 +422,7 @@ class BoxHook(BaseHook):
             client = self.get_conn()
 
             # Find the deepest existing folder
-            folder_result = self.get_item_id(path, item_type='folder', return_deepest_existing=True)
+            folder_result = self.get_existing_item_id(path, item_type='folder')
             if not folder_result.success:
                 return folder_result
 
@@ -384,7 +437,7 @@ class BoxHook(BaseHook):
             # Create the remaining folders
             for folder_name in remaining_path.split('/'):
                 folder = client.folder(folder_id=current_folder_id).create_subfolder(folder_name)
-                current_folder_id = folder.id
+                current_folder_id = folder.object_id
 
             return BoxResult(id=current_folder_id)
 
@@ -416,10 +469,28 @@ class BoxHook(BaseHook):
 
             client = self.get_conn()
             box_file = client.file(file_id=file_id)
+            print(box_file.object_id)
 
             with open(local_file_path, "wb") as local_file:
                 box_file.download_to(local_file)
 
-            return BoxResult(id=box_file.id)
+            return BoxResult(id=box_file.object_id)
         except Exception as e:
             return BoxResult(error_message=f"Error downloading file: {str(e)}", exception=e)
+
+def box_file_to_file_info(box_file, box_path) -> BoxFileInfo:
+    """
+    Convert a Box file object to a BoxFileInfo object.
+
+    :param box_file: The Box file object to convert.
+    :return: A BoxFileInfo object with the file's information.
+    """
+    return BoxFileInfo(
+        name=box_file.name,
+        type=box_file.type,
+        size=box_file.size,
+        created_at=box_file.created_at,
+        modified_at=box_file.modified_at,
+        path=box_path,
+        new=False
+    )
