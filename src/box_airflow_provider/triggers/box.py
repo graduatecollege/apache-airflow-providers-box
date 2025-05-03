@@ -61,7 +61,7 @@ class BoxTrigger(BaseTrigger):
                         continue
 
                     files_sensed = []
-                    for file_info in files_result.result:
+                    for file_info in files_result:
                         if _newer_than:
                             mod_time = convert_to_utc(parse(file_info.modified_at))
                             if _newer_than <= mod_time:
@@ -83,7 +83,7 @@ class BoxTrigger(BaseTrigger):
                         await asyncio.sleep(self.poke_interval)
                         continue
 
-                    file_info = file_info_result.result
+                    file_info = file_info_result
                     if _newer_than:
                         mod_time = convert_to_utc(parse(file_info.modified_at))
                         if _newer_than <= mod_time:

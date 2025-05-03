@@ -1,6 +1,8 @@
 import fnmatch
+import json
 import os
 from os.path import relpath, join
+from pprint import pprint
 from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
@@ -10,6 +12,7 @@ from pydantic import BaseModel
 
 class BoxFileInfo(BaseModel):
     """Information about a Box file."""
+    object_id: str
     name: str
     type: str
     size: int
@@ -17,81 +20,6 @@ class BoxFileInfo(BaseModel):
     modified_at: str
     path: str
     new: bool
-
-
-class BoxResult[T]:
-    """
-    Generic result object for Box operations.
-    
-    :param id: The Box item ID if available
-    :param success: Whether the operation was successful
-    :param result: The operation-specific result data
-    :param error_message: Error message if any error occurred during operation
-    """
-
-    def __init__(
-            self,
-            id: str | None = None,
-            success: bool | None = None,
-            result: T | None = None,
-            error_message: str | None = None,
-            exception: Exception | None = None,
-    ):
-        self.id = id
-        self.success = success
-        self.result = result
-        self.error_message = error_message
-        self.exception = exception
-
-        if success is None:
-            if error_message is not None:
-                self.success = False
-            elif exception is not None:
-                self.success = False
-            elif result is not None or id is not None:
-                self.success = True
-            else:
-                self.success = False
-
-    def __bool__(self) -> bool:
-        return self.success
-
-    def raise_if_error(self):
-        if self.exception is not None:
-            raise self.exception
-        if not self.success:
-            if self.error_message is not None:
-                raise Exception(self.error_message)
-            raise Exception("BoxResult not successful, but no specific error message was given")
-
-    def to_dict(self) -> dict:
-        """
-        Convert the BoxResult instance to a dictionary for JSON serialization.
-        """
-        return {
-            "id": self.id,
-            "success": self.success,
-            "result": self.result,
-            "error_message": self.error_message,
-            "exception": self.exception,
-        }
-
-    def __repr__(self) -> str:
-        """
-        Provide a string representation of the BoxResult instance.
-        """
-        return str(self.to_dict())
-
-    def serialize(self) -> dict[str, Any]:
-        return self.to_dict()
-
-    @staticmethod
-    def deserialize(data: dict):
-        """
-        Deserialize data to a BoxResult
-        """
-        return BoxResult(**data)
-
 
 class BoxHook(BaseHook):
     """
@@ -162,335 +90,283 @@ class BoxHook(BaseHook):
 
     def test_connection(self) -> (bool, str):
         """Test a connection"""
-        try:
-            conn = self.get_conn()
-            user = conn.user().get()
+        conn = self.get_conn()
+        user = conn.user().get()
+        return True, "Connection successfully tested"
 
-            return True, "Connection successfully tested"
-        except Exception as e:
-            return False, str(e)
-
-    def get_item_id(self, path: str, item_type: Literal['file', 'folder']) -> BoxResult[None]:
+    def get_item_id(self, path: str, item_type: Literal['file', 'folder']) -> str:
         """
-        Get the ID of a Box item (file or folder) based on a path. This will
-        return an error result if the item does not exist.
+        Get the ID of a Box item (file or folder) based on a path. Raises an exception if the item does not exist.
 
         :param path: Path to the item (e.g. "/Test/Area" or "/Test/Area/document.pdf")
         :param item_type: Type of item to look for, either 'file' or 'folder'
-        :return: BoxResult containing the ID of the target item if found
+        :return: The ID of the target item if found
         """
-        return self._get_item_id(path, item_type=item_type, return_deepest_existing=False)
+        return self._get_item_id(path, item_type=item_type, return_deepest_existing=False)[0]
 
-    def get_existing_item_id(self, path: str, item_type: Literal['file', 'folder']) -> BoxResult[str]:
+    def get_existing_item_id(self, path: str, item_type: Literal['file', 'folder']) -> tuple[str, str]:
         """
         Get the ID of an existing Box item (file or folder) based on a path.
 
         :param path: Path to the item (e.g. "/Test/Area" or "/Test/Area/document.pdf")
         :param item_type: Type of item to look for, either 'file' or 'folder'
-        :return: BoxResult containing the ID of the target item if found
+        :return: The ID of the target item if found
         """
         return self._get_item_id(path, item_type=item_type, return_deepest_existing=True)
 
     def _get_item_id(self, path: str, item_type: Literal['file', 'folder'], return_deepest_existing: bool = False) -> \
-            BoxResult[str | None]:
-        try:
-            client = self.get_conn()
+            tuple[str, str]:
+        """
+        Get the ID of a Box item (file or folder) based on a path. Raises an exception if the item does not exist.
 
-            current_folder_id = '0'
-            current_path = '/'
+        If the item does not exist, it returns the ID of the deepest existing folder as well as the path to that folder.
+        :return: A tuple with the ID and None, or the ID of the deepest existing folder and the path to that folder.
+        """
+        client = self.get_conn()
 
-            clean_path = path.strip('/')
-            if not clean_path:
-                if item_type == 'folder':
-                    return BoxResult(id=current_folder_id)
-                else:
-                    return BoxResult(
-                        error_message="Cannot get file ID for root folder path"
-                    )
+        current_folder_id = '0'
+        current_path = '/'
 
-            path_parts = clean_path.split('/')
-
-            # If looking for a file, the last part is the filename
-            if item_type == 'file':
-                folder_names = path_parts[:-1]
-                file_name = path_parts[-1]
+        clean_path = path.strip('/')
+        if not clean_path:
+            if item_type == 'folder':
+                return current_folder_id, None
             else:
-                folder_names = path_parts
-                file_name = None
+                raise ValueError("Cannot get file ID for root folder path")
 
-            for folder_name in folder_names:
-                if not folder_name:
-                    continue
+        path_parts = clean_path.split('/')
 
-                items = client.folder(folder_id=current_folder_id).get_items()
+        # If looking for a file, the last part is the filename
+        if item_type == 'file':
+            folder_names = path_parts[:-1]
+            file_name = path_parts[-1]
+        else:
+            folder_names = path_parts
+            file_name = None
 
-                found = False
-                for item in items:
-                    if item.type == 'folder' and item.name == folder_name:
-                        current_folder_id = item.object_id
-                        current_path = f"{current_path.rstrip('/')}/{folder_name}"
-                        found = True
-                        break
+        for folder_name in folder_names:
+            if not folder_name:
+                continue
 
-                if not found:
-                    if return_deepest_existing:
-                        return BoxResult(result=current_path, id=current_folder_id)
-                    return BoxResult(
-                        error_message=f"Folder '{folder_name}' not found in path '{path}'"
-                    )
+            items = client.folder(folder_id=current_folder_id).get_items()
 
-            # If looking for a file, find the file in the final folder
-            if item_type == 'file' and file_name:
-                items = client.folder(folder_id=current_folder_id).get_items()
+            found = False
+            for item in items:
+                if item.type == 'folder' and item.name == folder_name:
+                    current_folder_id = item.object_id
+                    current_path = f"{current_path.rstrip('/')}/{folder_name}"
+                    found = True
+                    break
 
-                for item in items:
-                    if item.type == 'file' and item.name == file_name:
-                        return BoxResult(id=item.object_id)
-
-                return BoxResult(
-                    error_message=f"File '{file_name}' not found in folder"
+            if not found:
+                if return_deepest_existing:
+                    return current_folder_id, current_path
+                raise FileNotFoundError(
+                    f"Folder '{folder_name}' not found in path '{current_path}'"
                 )
 
-            return BoxResult(id=current_folder_id)
-        except Exception as e:
-            return BoxResult(exception=e)
+        # If looking for a file, find the file in the final folder
+        if item_type == 'file' and file_name:
+            items = client.folder(folder_id=current_folder_id).get_items()
 
-    def get_folder_id(self, path: str) -> BoxResult[None]:
+            for item in items:
+                if item.type == 'file' and item.name == file_name:
+                    return item.object_id, None
+
+            raise FileNotFoundError(f"File '{file_name}' not found in folder")
+
+        return current_folder_id, None
+
+    def get_folder_id(self, path: str) -> str:
         """
         Get the ID of a Box folder based on a path.
 
         :param path: Path to the folder (e.g. "/Test/Area")
-        :return: BoxResult containing the ID of the target folder if found
+        :return: The ID of the target folder if found
         """
         return self.get_item_id(path, 'folder')
 
-    def get_file_id(self, path: str) -> BoxResult[None]:
+    def get_file_id(self, path: str) -> str:
         """
         Get the ID of a Box file based on a path.
 
         :param path: Path to the file (e.g. "/Test/Area/document.pdf")
-        :return: BoxResult containing the ID of the target file if found
+        :return: The ID of the target file if found
         """
         return self.get_item_id(path, 'file')
 
-    def get_file_info(self, path: str) -> BoxResult[BoxFileInfo]:
+    def get_file_info(self, path: str) -> BoxFileInfo:
         """
         Get the Box file information based on a path.
 
         :param path: Path to the file (e.g. "/Test/Area/document.pdf")
-        :return: BoxResult with the file information if successful
+        :return: The file information if successful
         """
-        try:
-            # First, get the file ID using the existing function
-            file_result = self.get_file_id(path)
+        file_id = self.get_file_id(path)
 
-            if not file_result.success:
-                return file_result
+        client = self.get_conn()
+        box_file = client.file(file_id=file_id).get()
 
-            # Get the file info
-            client = self.get_conn()
-            box_file = client.file(file_id=file_result.id).get()
+        return box_file_to_file_info(box_file)
 
-            # Convert to BoxFileInfo object
-            file_info = box_file_to_file_info(box_file, path)
-
-            return BoxResult(
-                id=box_file.object_id,
-                result=file_info
-            )
-
-        except Exception as e:
-            return BoxResult(exception=e)
-
-    def get_file_modified_time(self, path: str) -> BoxResult[str]:
+    def get_file_modified_time(self, path: str) -> tuple[str, str]:
         """
         Get the last modified time of a Box file based on a path.
-        
+
         :param path: Path to the file (e.g. "/Test/Area/document.pdf")
-        :return: BoxResult with the file's modified time as the result if successful
+        :return: The file's ID and last modified time if successful
         """
         file_info = self.get_file_info(path)
-        if not file_info.success:
-            return file_info
 
-        return BoxResult(
-            id=file_info.id,
-            result=file_info.result.modified_at
-        )
+        pprint(file_info)
 
-    def get_files_by_pattern(self, path: str, file_pattern: str) -> BoxResult[list[BoxFileInfo]]:
+        return file_info.object_id, file_info.modified_at
+
+    def get_files_by_pattern(self, path: str, file_pattern: str) -> list[BoxFileInfo]:
         """
         Get a list of Box files matching a pattern in a given folder.
 
         :param path: Path to the folder (e.g. "/Test/Area")
         :param file_pattern: Pattern to match files against (e.g. "*.pdf")
-        :return: BoxResult with a list of matching BoxFileInfo objects
+        :return: A list of matching BoxFileInfo objects
         """
-        try:
-            client = self.get_conn()
-            folder_result = self.get_folder_id(path)
+        client = self.get_conn()
+        folder_id = self.get_folder_id(path)
 
-            if not folder_result.success or folder_result.id is None:
-                return BoxResult(
-                    error_message=folder_result.error_message or f"Could not find folder: {path}"
-                )
+        items = client.folder(folder_id=folder_id).get_items()
 
-            folder_id = folder_result.id
-            items = client.folder(folder_id=folder_id).get_items()
+        matching_files = []
+        for item in items:
+            if item.type == 'file' and fnmatch.fnmatch(item.name, file_pattern):
+                matching_files.append(box_file_to_file_info(item))
 
-            matching_files = []
-            for item in items:
-                if item.type == 'file' and fnmatch.fnmatch(item.name, file_pattern):
-                    matching_files.append(box_file_to_file_info(item, join(path, item.name)))
+        return matching_files
 
-            return BoxResult(result=matching_files)
-
-        except Exception as e:
-            return BoxResult(exception=e)
-
-    def upload_file(self, local_file_path: str, box_path: str) -> BoxResult[BoxFileInfo]:
+    def upload_file(self, local_file_path: str, box_path: str) -> BoxFileInfo:
         """
         Upload a file to Box.
 
         :param local_file_path: Path to the local file to upload
         :param box_path: Destination path in Box (e.g. "/Test/Area/document.pdf")
-        :return: BoxResult with the uploaded file information
+        :return: The uploaded file information
         """
-        try:
-            client = self.get_conn()
+        client = self.get_conn()
 
-            # Extract folder path and filename from box_path
-            box_directory, filename = os.path.split(box_path.strip('/'))
-            box_directory = '/' + box_directory if box_directory else '/'
+        # Extract folder path and filename from box_path
+        box_directory, filename = os.path.split(box_path.strip('/'))
+        box_directory = '/' + box_directory if box_directory else '/'
 
-            if not filename:
-                return BoxResult(
-                    error_message="Must provide full path to Box file including filename"
-                )
+        if not filename:
+            raise ValueError("Must provide full path to Box file including filename")
 
-            # Get folder ID for the destination path
-            folder_result = self.get_folder_id(box_directory)
+        folder_id = self.get_folder_id(box_directory)
 
-            if not folder_result.success or folder_result.id is None:
-                return BoxResult(
-                    error_message=folder_result.error_message or f"Could not find destination folder: {box_directory}"
-                )
+        # Check if file already exists and perform update if it does
+        existing_items = client.folder(folder_id=folder_id).get_items()
+        file_already_exists = False
+        existing_file_id = None
 
-            folder_id = folder_result.id
+        for item in existing_items:
+            if item.name == filename:
+                if item.type == 'File':
+                    file_already_exists = True
+                    existing_file_id = item.object_id
+                elif item.type == 'Folder':
+                    raise ValueError(f"A folder with the name '{filename}' already exists in the destination path.")
+                break
 
-            # Check if file already exists and perform update if it does
-            existing_items = client.folder(folder_id=folder_id).get_items()
-            file_already_exists = False
-            existing_file_id = None
+        if file_already_exists and existing_file_id:
+            uploaded_file = client.file(file_id=existing_file_id).update_contents(local_file_path)
+        else:
+            uploaded_file = client.folder(folder_id=folder_id).upload(local_file_path, filename)
 
-            for item in existing_items:
-                if item.name == filename:
-                    if item.type == 'File':
-                        file_already_exists = True
-                        existing_file_id = item.object_id
-                    elif item.type == 'Folder':
-                        # If a folder with the same name exists, we cannot upload a file with that name
-                        return BoxResult(
-                            error_message=f"A folder with the name '{filename}' already exists in the destination path."
-                        )
-                    break
 
-            if file_already_exists and existing_file_id:
-                uploaded_file = client.file(file_id=existing_file_id).update_contents(local_file_path)
-            else:
-                uploaded_file = client.folder(folder_id=folder_id).upload(local_file_path, filename)
+        file_info = box_file_to_file_info(uploaded_file)
+        file_info.new = not file_already_exists
 
-            file_info = box_file_to_file_info(uploaded_file, box_path)
-            file_info.new = not file_already_exists
+        return file_info
 
-            return BoxResult(
-                id=uploaded_file.object_id,
-                result=file_info
-            )
-
-        except Exception as e:
-            return BoxResult(error_message=f"Error uploading file: {str(e)}", exception=e)
-
-    def create_folder(self, path: str) -> BoxResult[str]:
+    def create_folder(self, path: str) -> str:
         """
         Create folders recursively based on the given path.
 
         :param path: The full path of the folder to create (e.g., "/Parent/Child/Grandchild").
-        :return: BoxResult containing the ID of the final folder created or found.
+        :return: The ID of the final folder created or found.
         """
-        try:
-            client = self.get_conn()
+        client = self.get_conn()
 
-            # Find the deepest existing folder
-            folder_result = self.get_existing_item_id(path, item_type='folder')
-            if not folder_result.success:
-                return folder_result
+        # Find the deepest existing folder
+        (id, path) = self.get_existing_item_id(path, item_type='folder')
 
-            current_folder_id = folder_result.id
-            current_path = folder_result.result or '/'
+        current_folder_id = id
+        current_path = path or '/'
 
-            # Get the remaining path to create
-            remaining_path = relpath(path, current_path).strip('/')
-            if remaining_path == '.':
-                return BoxResult(id=current_folder_id)  # All folders already exist
+        # Get the remaining path to create
+        remaining_path = relpath(path, current_path).strip('/')
+        if remaining_path == '.':
+            return current_folder_id
 
-            # Create the remaining folders
-            for folder_name in remaining_path.split('/'):
-                folder = client.folder(folder_id=current_folder_id).create_subfolder(folder_name)
-                current_folder_id = folder.object_id
+        # Create the remaining folders
+        for folder_name in remaining_path.split('/'):
+            folder = client.folder(folder_id=current_folder_id).create_subfolder(folder_name)
+            current_folder_id = folder.object_id
 
-            return BoxResult(id=current_folder_id)
+        return current_folder_id
 
-        except Exception as e:
-            return BoxResult(exception=e)
-
-    def download_file(self, box_path: str, local_file_path: str) -> BoxResult[None]:
+    def download_file(self, box_path: str, local_file_path: str) -> BoxFileInfo:
         """
         Download a file from Box and save it to a local file path.
 
         :param box_path: Path to the file in Box (e.g., "/Test/Area/document.pdf") or a numeric string representing the file ID.
         :param local_file_path: Path to save the downloaded file locally.
-        :return: BoxResult with the ID of the Box file if successful.
         """
-        try:
-            # Check if box_path is a numeric string (file ID)
-            if box_path.isdigit():
-                file_id = box_path
-            else:
-                # Resolve file ID from path
-                file_result = self.get_file_id(box_path)
-                if not file_result.success:
-                    return file_result
-                if not file_result.id:
-                    return BoxResult(
-                        error_message="Box file ID is None, cannot download file"
-                    )
-                file_id = file_result.id
+        # Check if box_path is a numeric string (file ID)
+        if box_path.isdigit():
+            file_id = box_path
+        else:
+            file_id = self.get_file_id(box_path)
 
-            client = self.get_conn()
-            box_file = client.file(file_id=file_id)
-            print(box_file.object_id)
+        client = self.get_conn()
+        box_file = client.file(file_id=file_id)
+        info = box_file_to_file_info(box_file.get())
 
-            with open(local_file_path, "wb") as local_file:
-                box_file.download_to(local_file)
+        with open(local_file_path, "wb") as local_file:
+            box_file.download_to(local_file)
 
-            return BoxResult(id=box_file.object_id)
-        except Exception as e:
-            return BoxResult(error_message=f"Error downloading file: {str(e)}", exception=e)
+        return info
 
-def box_file_to_file_info(box_file, box_path) -> BoxFileInfo:
+    def delete_file(self, box_path: str) -> None:
+        """
+        Delete a file from Box based on its path.
+
+        :param box_path: Path to the file in Box (e.g., "/Test/Area/document.pdf") or a numeric string representing the file ID.
+        """
+        # Check if box_path is a numeric string (file ID)
+        if box_path.isdigit():
+            file_id = box_path
+        else:
+            file_id = self.get_file_id(box_path)
+
+        client = self.get_conn()
+        box_file = client.file(file_id=file_id)
+        box_file.delete()
+
+
+def box_file_to_file_info(box_file) -> BoxFileInfo:
     """
     Convert a Box file object to a BoxFileInfo object.
 
     :param box_file: The Box file object to convert.
     :return: A BoxFileInfo object with the file's information.
     """
+    pprint(vars(box_file))
     return BoxFileInfo(
+        object_id=box_file.object_id,
         name=box_file.name,
         type=box_file.type,
         size=box_file.size,
         created_at=box_file.created_at,
         modified_at=box_file.modified_at,
-        path=box_path,
+        path='/' + '/'.join([it.name for it in box_file.path_collection['entries'][1::]]) + '/' + box_file.name,
         new=False
     )

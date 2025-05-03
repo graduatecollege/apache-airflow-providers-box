@@ -33,10 +33,7 @@ class BoxUploadOperator(BaseOperator):
 
         response = hook.upload_file(self.local_path, self.box_path)
 
-        if not response.success:
-            raise response.exception or AirflowException("Upload failed: " + response.error_message)
-
-        return response.result
+        return response
 
 
 class BoxDownloadOperator(BoxUploadOperator):
@@ -46,7 +43,4 @@ class BoxDownloadOperator(BoxUploadOperator):
 
         response = hook.download_file(self.box_path, self.local_path)
 
-        if not response.success:
-            raise response.exception or AirflowException("Download failed: " + response.error_message)
-
-        return response.result
+        return response

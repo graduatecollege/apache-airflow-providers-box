@@ -58,17 +58,17 @@ class BoxSensor(BaseSensorOperator):
 
     def poke(self, context: Context) -> PokeReturnValue | bool:
         self.hook = BoxHook(self.box_conn_id)
-        self.log.info("Poking for %s, with pattern %s", self.path, self.file_pattern)
+        self.log.debug("Poking for %s, with pattern %s", self.path, self.file_pattern)
         files_found = []
 
         if self.file_pattern:
             files_from_pattern = self.hook.get_files_by_pattern(self.path, self.file_pattern)
             if files_from_pattern:
-                actual_files_to_check = files_from_pattern.result
+                actual_files_to_check = files_from_pattern
             else:
                 return False
         else:
-            actual_files_to_check = [self.hook.get_file_info(self.path).result]
+            actual_files_to_check = [self.hook.get_file_info(self.path)]
 
         for file_info in actual_files_to_check:
             if not file_info:
@@ -83,14 +83,14 @@ class BoxSensor(BaseSensorOperator):
                 _newer_than = convert_to_utc(self.newer_than)
                 if _newer_than <= _mod_time:
                     files_found.append(file_info)
-                    self.log.info(
+                    self.log.debug(
                         "File %s has modification time: '%s', which is newer than: '%s'",
                         file_info.path,
                         str(_mod_time),
                         str(_newer_than),
                     )
                 else:
-                    self.log.info(
+                    self.log.debug(
                         "File %s has modification time: '%s', which is older than: '%s'",
                         file_info.path,
                         str(_mod_time),

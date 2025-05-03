@@ -33,15 +33,14 @@ def basic():
     def extract():
         box_hook = BoxHook(box_conn_id="box")
         response = box_hook.get_file_id("/Grad Automation/GradCollegeTicketStatusReport.xlsx")
-        response.raise_if_error()
-        return response.id
+        return response
 
     @task()
     def last_modified():
         box_hook = BoxHook(box_conn_id="box")
         response = box_hook.get_file_modified_time("/Grad Automation/GradCollegeTicketStatusReport.xlsx")
-        response.raise_if_error()
-        return response.result
+
+        return response[1]
 
     down = BoxDownloadOperator(
         task_id="download",
