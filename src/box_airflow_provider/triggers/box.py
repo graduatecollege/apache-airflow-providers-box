@@ -8,16 +8,20 @@ from airflow.triggers.base import BaseTrigger, TriggerEvent
 from airflow.utils.timezone import convert_to_utc, parse
 
 from box_airflow_provider.hooks.box import BoxHook
+from box_airflow_provider.models import BoxTriggerEventData
 
 
 class BoxTrigger(BaseTrigger):
     def __init__(
-        self,
-        path: str,
-        file_pattern: str = "",
-        box_conn_id: str = BoxHook.default_conn_name,
-        newer_than: datetime | str | None = None,
-        poke_interval: float = 60,
+            self,
+            path: str,
+            file_pattern: str = "",
+            box_conn_id: str = BoxHook.default_conn_name,
+            newer_than: datetime | str | None = None,
+            poke_interval: float = 60,
+            files_sensed: list[tuple[str, str]] | None = None,
+            status: str = "",
+            message: str = "",
     ) -> None:
         super().__init__()
         self.path = path
@@ -25,6 +29,9 @@ class BoxTrigger(BaseTrigger):
         self.box_conn_id = box_conn_id
         self.newer_than = newer_than
         self.poke_interval = poke_interval
+        self.files_sensed = files_sensed
+        self.status = status
+        self.message = message
 
     def serialize(self) -> tuple[str, dict[str, Any]]:
         """Serialize BoxTrigger arguments and classpath."""
@@ -37,6 +44,24 @@ class BoxTrigger(BaseTrigger):
                 "newer_than": self.newer_than,
                 "poke_interval": self.poke_interval,
             },
+        )
+
+    def _create_event_data(self, status: str, message: str, files_sensed: list[tuple[str, str]] | None = None) -> BoxTriggerEventData:
+        """
+        Utility function to create a BoxTriggerEventData object using instance variables.
+
+        :param status: Status of the event (e.g., "success", "error").
+        :param message: Message describing the event.
+        :param files_sensed: List of files sensed, if any.
+        :return: A BoxTriggerEventData object.
+        """
+        return BoxTriggerEventData(
+            status=status,
+            message=message,
+            files_sensed=files_sensed,
+            newer_than=self.newer_than,
+            path=self.path,
+            file_pattern=self.file_pattern,
         )
 
     async def run(self) -> AsyncIterator[TriggerEvent]:
@@ -56,7 +81,7 @@ class BoxTrigger(BaseTrigger):
             try:
                 if self.file_pattern:
                     files_result = hook.get_files_by_pattern(self.path, self.file_pattern)
-                    if not files_result.success:
+                    if not files_result or len(files_result) == 0:
                         await asyncio.sleep(self.poke_interval)
                         continue
 
@@ -65,21 +90,27 @@ class BoxTrigger(BaseTrigger):
                         if _newer_than:
                             mod_time = convert_to_utc(parse(file_info.modified_at))
                             if _newer_than <= mod_time:
-                                files_sensed.append(file_info.name)
+                                files_sensed.append((file_info.name, file_info.object_id))
                         else:
-                            files_sensed.append(file_info.name)
+                            files_sensed.append((file_info.name, file_info.object_id))
 
                     if files_sensed:
-                        yield TriggerEvent(
-                            {
-                                "status": "success",
-                                "message": f"Sensed {len(files_sensed)} files: {files_sensed}",
-                            }
+                        event_data = self._create_event_data(
+                            status="success",
+                            message=f"Sensed {len(files_sensed)} files: {files_sensed}",
+                            files_sensed=files_sensed,
                         )
+                        yield TriggerEvent(event_data.model_dump())
                         return
                 else:
-                    file_info_result = hook.get_file_info(self.path)
-                    if not file_info_result.success:
+                    # Catch FileNotFoundError and sleep, other errors should propagate
+                    try:
+                        file_info_result = hook.get_file_info(self.path)
+                    except FileNotFoundError:
+                        await asyncio.sleep(self.poke_interval)
+                        continue
+
+                    if not file_info_result:
                         await asyncio.sleep(self.poke_interval)
                         continue
 
@@ -87,13 +118,28 @@ class BoxTrigger(BaseTrigger):
                     if _newer_than:
                         mod_time = convert_to_utc(parse(file_info.modified_at))
                         if _newer_than <= mod_time:
-                            yield TriggerEvent({"status": "success", "message": f"Sensed file: {self.path}"})
+                            event_data = self._create_event_data(
+                                status="success",
+                                message=f"Sensed file: {self.path}",
+                                files_sensed=[(file_info.name, file_info.object_id)],
+                            )
+                            yield TriggerEvent(event_data.model_dump())
                             return
                     else:
-                        yield TriggerEvent({"status": "success", "message": f"Sensed file: {self.path}"})
+                        event_data = self._create_event_data(
+                            status="success",
+                            message=f"Sensed file: {self.path}",
+                            files_sensed=[(file_info.name, file_info.object_id)],
+                        )
+                        yield TriggerEvent(event_data.model_dump())
                         return
 
                 await asyncio.sleep(self.poke_interval)
             except Exception as e:
-                yield TriggerEvent({"status": "error", "message": str(e)})
+                event_data = self._create_event_data(
+                    status="error",
+                    message=str(e),
+                    files_sensed=None,
+                )
+                yield TriggerEvent(event_data.model_dump())
                 return

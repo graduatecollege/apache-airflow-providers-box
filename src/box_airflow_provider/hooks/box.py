@@ -1,14 +1,13 @@
 import fnmatch
 import json
+import logging
 import os
 from os.path import relpath, join
-from pprint import pprint
 from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
 from boxsdk import Client, CCGAuth
 from pydantic import BaseModel
-
 
 class BoxFileInfo(BaseModel):
     """Information about a Box file."""
@@ -85,6 +84,7 @@ class BoxHook(BaseHook):
             )
 
             self.client = Client(auth)
+            logging.getLogger("boxsdk").setLevel(logging.WARNING)
 
         return self.client
 
@@ -217,8 +217,6 @@ class BoxHook(BaseHook):
         :return: The file's ID and last modified time if successful
         """
         file_info = self.get_file_info(path)
-
-        pprint(file_info)
 
         return file_info.object_id, file_info.modified_at
 
@@ -359,7 +357,6 @@ def box_file_to_file_info(box_file) -> BoxFileInfo:
     :param box_file: The Box file object to convert.
     :return: A BoxFileInfo object with the file's information.
     """
-    pprint(vars(box_file))
     return BoxFileInfo(
         object_id=box_file.object_id,
         name=box_file.name,

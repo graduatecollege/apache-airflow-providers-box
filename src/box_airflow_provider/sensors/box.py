@@ -1,17 +1,16 @@
 # ASF adapted from https://github.com/apache/airflow/blob/providers-sftp/4.11.1/airflow/providers/sftp/sensors/sftp.py
 
 from datetime import datetime, timedelta
-from os.path import join
-from typing import Callable
-
-from airflow.exceptions import AirflowException
-from airflow.sensors.base import BaseSensorOperator, PokeReturnValue
+from typing import Callable, Any
 
 from airflow.configuration import conf
+from airflow.exceptions import AirflowException
+from airflow.sensors.base import BaseSensorOperator, PokeReturnValue
 from airflow.utils.context import Context
 from airflow.utils.timezone import parse, convert_to_utc
 
 from box_airflow_provider.hooks.box import BoxHook
+from box_airflow_provider.models import BoxTriggerEventData
 from box_airflow_provider.triggers.box import BoxTrigger
 
 
@@ -33,17 +32,17 @@ class BoxSensor(BaseSensorOperator):
     ]
 
     def __init__(
-        self,
-        *,
-        box_conn_id: str = BoxHook.default_conn_name,
-        path: str,
-        file_pattern: str = "",
-        newer_than: datetime | str | None = None,
-        python_callable: Callable | None = None,
-        op_args: list | None = None,
-        op_kwargs: dict[str, any] | None = None,
-        deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
-        **kwargs,
+            self,
+            *,
+            box_conn_id: str = BoxHook.default_conn_name,
+            path: str,
+            file_pattern: str = "",
+            newer_than: datetime | str | None = None,
+            python_callable: Callable | None = None,
+            op_args: list | None = None,
+            op_kwargs: dict[str, any] | None = None,
+            deferrable: bool = conf.getboolean("operators", "default_deferrable", fallback=False),
+            **kwargs,
     ) -> None:
         super().__init__(**kwargs)
         self.path = path
@@ -76,7 +75,7 @@ class BoxSensor(BaseSensorOperator):
 
             mod_time = file_info.modified_at
 
-            if self.newer_than:
+            if self.newer_than and self.newer_than != "None":
                 if isinstance(self.newer_than, str):
                     self.newer_than = parse(self.newer_than)
                 _mod_time = convert_to_utc(parse(mod_time))
@@ -127,3 +126,12 @@ class BoxSensor(BaseSensorOperator):
                 ),
                 method_name="execute_complete",
             )
+
+    def execute_complete(self, context: Context, event: dict[str, Any]) -> None:
+        self.log.info("Trigger event received: %s", event)
+
+        if event["status"] == "success":
+            self.log.info(event["message"])
+            return event["files_sensed"]
+        else:
+            raise AirflowException(event["message"])
