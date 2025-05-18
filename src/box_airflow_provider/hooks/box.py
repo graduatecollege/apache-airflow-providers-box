@@ -175,6 +175,8 @@ class BoxHook(BaseHook):
 
             raise FileNotFoundError(f"File '{file_name}' not found in folder")
 
+        if return_deepest_existing:
+            return current_folder_id, current_path
         return current_folder_id, None
 
     def get_folder_id(self, path: str) -> str:
@@ -257,7 +259,7 @@ class BoxHook(BaseHook):
         if not filename:
             raise ValueError("Must provide full path to Box file including filename")
 
-        folder_id = self.get_folder_id(box_directory)
+        folder_id = self.create_folder(box_directory)
 
         # Check if file already exists and perform update if it does
         existing_items = client.folder(folder_id=folder_id).get_items()
@@ -266,10 +268,10 @@ class BoxHook(BaseHook):
 
         for item in existing_items:
             if item.name == filename:
-                if item.type == 'File':
+                if item.type == 'file':
                     file_already_exists = True
                     existing_file_id = item.object_id
-                elif item.type == 'Folder':
+                elif item.type == 'folder':
                     raise ValueError(f"A folder with the name '{filename}' already exists in the destination path.")
                 break
 
@@ -294,13 +296,14 @@ class BoxHook(BaseHook):
         client = self.get_conn()
 
         # Find the deepest existing folder
-        (id, path) = self.get_existing_item_id(path, item_type='folder')
+        (id, expath) = self.get_existing_item_id(path, item_type='folder')
 
         current_folder_id = id
-        current_path = path or '/'
+        current_path = expath or '/'
 
         # Get the remaining path to create
         remaining_path = relpath(path, current_path).strip('/')
+
         if remaining_path == '.':
             return current_folder_id
 

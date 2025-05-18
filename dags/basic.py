@@ -9,7 +9,7 @@ from airflow.decorators import dag, task
 from airflow.utils.helpers import chain
 
 from box_airflow_provider.hooks.box import BoxHook
-from box_airflow_provider.operators.box import BoxDownloadOperator
+from box_airflow_provider.operators.box import BoxDownloadOperator, BoxUploadOperator
 from box_airflow_provider.sensors.box import BoxSensor
 
 
@@ -49,6 +49,13 @@ def basic():
         box_path="/Grad Automation/GradCollegeTicketStatusReport.xlsx",
     )
 
-    wait_for_update >> extract() >> last_modified() >> down
+    upload_to_box = BoxUploadOperator(
+        task_id="upload_to_box",
+        local_path="./GradCollegeTicketStatusReport.xlsx",
+        box_path="/Grad Automation/Test/SummerWritingLab/Faculty_DGS_EO_Contact_Emails_{{ ds }}.csv",
+        box_conn_id="box"
+    )
+
+    wait_for_update >> extract() >> last_modified() >> down >> upload_to_box
 
 basic_dag = basic()
