@@ -1,8 +1,7 @@
 import fnmatch
-import json
 import logging
 import os
-from os.path import relpath, join
+from os.path import relpath
 from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
@@ -10,7 +9,12 @@ from boxsdk import Client, CCGAuth
 from pydantic import BaseModel
 
 class BoxFileInfo(BaseModel):
-    """Information about a Box file."""
+    """
+    Information about a Box file.
+
+    The typing of the original Box SDK is far too complicated to be useful,
+    so we're defining a simple model.
+    """
     object_id: str
     name: str
     type: str
@@ -23,6 +27,8 @@ class BoxFileInfo(BaseModel):
 class BoxHook(BaseHook):
     """
     Interact with Box API.
+
+    This uses the official Box SDK for Python.
 
     :param box_conn_id: The connection ID to use for Box API
     """
@@ -233,7 +239,7 @@ class BoxHook(BaseHook):
         client = self.get_conn()
         folder_id = self.get_folder_id(path)
 
-        items = client.folder(folder_id=folder_id).get_items()
+        items = client.folder(folder_id=folder_id).get_items(fields=['name', 'type', 'size', 'created_at', 'modified_at', 'path_collection'])
 
         matching_files = []
         for item in items:
@@ -364,9 +370,10 @@ def box_file_to_file_info(box_file) -> BoxFileInfo:
         object_id=box_file.object_id,
         name=box_file.name,
         type=box_file.type,
-        size=box_file.size,
-        created_at=box_file.created_at,
-        modified_at=box_file.modified_at,
+        # Use the size attribute if available, otherwise default to 0
+        size= box_file.size if hasattr(box_file, 'size') else 0,
+        created_at=box_file.created_at if hasattr(box_file, 'created_at') else None,
+        modified_at=box_file.modified_at if hasattr(box_file, 'modified_at') else None,
         path='/' + '/'.join([it.name for it in box_file.path_collection['entries'][1::]]) + '/' + box_file.name,
         new=False
     )

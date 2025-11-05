@@ -80,7 +80,9 @@ class BoxTrigger(BaseTrigger):
         while True:
             try:
                 if self.file_pattern:
-                    files_result = hook.get_files_by_pattern(self.path, self.file_pattern)
+                    files_result = await asyncio.to_thread(
+                        hook.get_files_by_pattern, self.path, self.file_pattern
+                    )
                     if not files_result or len(files_result) == 0:
                         await asyncio.sleep(self.poke_interval)
                         continue
@@ -105,7 +107,9 @@ class BoxTrigger(BaseTrigger):
                 else:
                     # Catch FileNotFoundError and sleep, other errors should propagate
                     try:
-                        file_info_result = hook.get_file_info(self.path)
+                        file_info_result = await asyncio.to_thread(
+                            hook.get_file_info, self.path
+                        )
                     except FileNotFoundError:
                         await asyncio.sleep(self.poke_interval)
                         continue

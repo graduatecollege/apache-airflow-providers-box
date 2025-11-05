@@ -1,5 +1,3 @@
-# ASF adapted from https://github.com/apache/airflow/blob/providers-sftp/4.11.1/airflow/providers/sftp/sensors/sftp.py
-
 from datetime import datetime, timedelta
 from typing import Callable, Any
 
@@ -10,7 +8,6 @@ from airflow.utils.context import Context
 from airflow.utils.timezone import parse, convert_to_utc
 
 from box_airflow_provider.hooks.box import BoxHook
-from box_airflow_provider.models import BoxTriggerEventData
 from box_airflow_provider.triggers.box import BoxTrigger
 
 
@@ -25,7 +22,6 @@ class BoxSensor(BaseSensorOperator):
     :param deferrable: If waiting for completion, whether to defer the task until done, default is ``False``.
     """
 
-    # Specify the arguments that are allowed to parse with jinja templating
     template_fields = [
         "path",
         "newer_than",

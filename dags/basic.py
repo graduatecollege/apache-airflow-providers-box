@@ -1,12 +1,8 @@
-
-import json
 from datetime import timedelta
 
 import pendulum
 
-
 from airflow.decorators import dag, task
-from airflow.utils.helpers import chain
 
 from box_airflow_provider.hooks.box import BoxHook
 from box_airflow_provider.operators.box import BoxDownloadOperator, BoxUploadOperator
@@ -19,6 +15,9 @@ from box_airflow_provider.sensors.box import BoxSensor
     catchup=False,
 )
 def basic():
+    """
+    A basic DAG to demonstrate Box operators and sensors.
+    """
 
     wait_for_update = BoxSensor(
         task_id="wait_for_update",
