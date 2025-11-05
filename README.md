@@ -2,6 +2,8 @@
 
 Provider for integrating Box.com with Apache Airflow. Written for Apache Airflow 2.11.0.
 
+See the [sample basic.py DAG](dags/basic.py) for usage examples.
+
 ## Support
 
 This product is supported by the Graduate College, University of Illinois Urbana-Champaign on a best-effort basis.
