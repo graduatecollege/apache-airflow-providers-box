@@ -45,4 +45,4 @@ To create a new release:
    - Publish to PyPI
    - Create a GitHub Release with the distribution files
 
-**Note**: Ensure that the `PYPI_API_TOKEN` secret is configured in the repository settings for PyPI publishing to work. The workflow uses trusted publishing (OIDC) by default, but you may need to configure your PyPI project to allow this.
+**Note**: The workflow uses PyPI's trusted publishing (OIDC) by default, which doesn't require an API token. You'll need to configure your PyPI project to trust the GitHub Actions workflow. See [PyPI's trusted publishing guide](https://docs.pypi.org/trusted-publishers/adding-a-publisher/) for setup instructions. Alternatively, you can modify the workflow to use a `PYPI_API_TOKEN` secret instead.
