@@ -1,16 +1,18 @@
 import fnmatch
 import logging
 import os
+from datetime import datetime
 from os.path import relpath
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
-from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig
+from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig, FileFull
 from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField, UploadFileVersionAttributes
 from box_sdk_gen.managers.folders import CreateFolderParent
-from pydantic import BaseModel
 
-class BoxFileInfo(BaseModel):
+@dataclass
+class BoxFileInfo:
     """
     Information about a Box file.
 
@@ -21,8 +23,8 @@ class BoxFileInfo(BaseModel):
     name: str
     type: str
     size: int
-    created_at: str
-    modified_at: str
+    created_at: datetime | None
+    modified_at: datetime | None
     path: str
     new: bool
 
@@ -378,7 +380,7 @@ class BoxHook(BaseHook):
         client.files.delete_file_by_id(file_id=file_id)
 
 
-def box_file_to_file_info(box_file) -> BoxFileInfo:
+def box_file_to_file_info(box_file: FileFull) -> BoxFileInfo:
     """
     Convert a Box file object to a BoxFileInfo object.
 

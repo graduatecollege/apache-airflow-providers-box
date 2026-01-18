@@ -11,8 +11,9 @@ from box_airflow_provider.sensors.box import BoxSensor
 
 @dag(
     start_date=pendulum.datetime(2025, 4, 13, 8, 0, tz="America/Chicago"),
-    schedule="@daily",
+    schedule="@hourly",
     catchup=False,
+    render_template_as_native_obj=True
 )
 def basic():
     """
@@ -23,7 +24,7 @@ def basic():
         task_id="wait_for_update",
         box_conn_id="box",
         path="/Grad Automation/GradCollegeTicketStatusReport.xlsx",
-        newer_than='{{ dag_run.logical_date + macros.timedelta(hours=-12) }}',
+        newer_than='{{ dag_run.logical_date + macros.timedelta(hours=-6) }}',
         deferrable=True,
         timeout=timedelta(hours=1),
     )

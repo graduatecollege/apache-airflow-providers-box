@@ -1,13 +1,16 @@
 # ASF Adapted from https://github.com/apache/airflow/blob/providers-sftp/4.11.1/airflow/providers/sftp/triggers/sftp.py
 
 import asyncio
+import traceback
+from dataclasses import asdict
 from datetime import datetime
 from typing import Any, AsyncIterator
 
+import pendulum
 from airflow.triggers.base import BaseTrigger, TriggerEvent
-from airflow.utils.timezone import convert_to_utc, parse
+from airflow.utils.timezone import parse
 
-from box_airflow_provider.hooks.box import BoxHook
+from box_airflow_provider.hooks.box import BoxHook, BoxFileInfo
 from box_airflow_provider.models import BoxTriggerEventData
 
 
@@ -58,11 +61,14 @@ class BoxTrigger(BaseTrigger):
         return BoxTriggerEventData(
             status=status,
             message=message,
-            files_sensed=files_sensed,
             newer_than=self.newer_than,
+            files_sensed=files_sensed,
             path=self.path,
             file_pattern=self.file_pattern,
         )
+
+    def yield_even_data(self, status: str, message: str, files_sensed: list[tuple[str, str]] | None = None) -> TriggerEvent:
+        return TriggerEvent(asdict(self._create_event_data(status, message, files_sensed)))
 
     async def run(self) -> AsyncIterator[TriggerEvent]:
         """
@@ -75,12 +81,12 @@ class BoxTrigger(BaseTrigger):
         hook = BoxHook(self.box_conn_id)
         if isinstance(self.newer_than, str):
             self.newer_than = parse(self.newer_than)
-        _newer_than = convert_to_utc(self.newer_than) if self.newer_than else None
+        _newer_than = pendulum.instance(self.newer_than) if self.newer_than else None
 
         while True:
             try:
                 if self.file_pattern:
-                    files_result = await asyncio.to_thread(
+                    files_result: list[BoxFileInfo] = await asyncio.to_thread(
                         hook.get_files_by_pattern, self.path, self.file_pattern
                     )
                     if not files_result or len(files_result) == 0:
@@ -90,7 +96,7 @@ class BoxTrigger(BaseTrigger):
                     files_sensed = []
                     for file_info in files_result:
                         if _newer_than:
-                            mod_time = convert_to_utc(parse(file_info.modified_at))
+                            mod_time = pendulum.instance(file_info.modified_at)
                             if _newer_than <= mod_time:
                                 files_sensed.append((file_info.name, file_info.object_id))
                         else:
@@ -102,12 +108,12 @@ class BoxTrigger(BaseTrigger):
                             message=f"Sensed {len(files_sensed)} files: {files_sensed}",
                             files_sensed=files_sensed,
                         )
-                        yield TriggerEvent(event_data.model_dump())
+                        yield self.yield_even_data(event_data.status, event_data.message, event_data.files_sensed)
                         return
                 else:
                     # Catch FileNotFoundError and sleep, other errors should propagate
                     try:
-                        file_info_result = await asyncio.to_thread(
+                        file_info_result: BoxFileInfo = await asyncio.to_thread(
                             hook.get_file_info, self.path
                         )
                     except FileNotFoundError:
@@ -120,14 +126,14 @@ class BoxTrigger(BaseTrigger):
 
                     file_info = file_info_result
                     if _newer_than:
-                        mod_time = convert_to_utc(parse(file_info.modified_at))
+                        mod_time = pendulum.instance(file_info.modified_at)
                         if _newer_than <= mod_time:
                             event_data = self._create_event_data(
                                 status="success",
                                 message=f"Sensed file: {self.path}",
                                 files_sensed=[(file_info.name, file_info.object_id)],
                             )
-                            yield TriggerEvent(event_data.model_dump())
+                            yield self.yield_even_data(event_data.status, event_data.message, event_data.files_sensed)
                             return
                     else:
                         event_data = self._create_event_data(
@@ -135,15 +141,15 @@ class BoxTrigger(BaseTrigger):
                             message=f"Sensed file: {self.path}",
                             files_sensed=[(file_info.name, file_info.object_id)],
                         )
-                        yield TriggerEvent(event_data.model_dump())
+                        yield self.yield_even_data(event_data.status, event_data.message, event_data.files_sensed)
                         return
 
                 await asyncio.sleep(self.poke_interval)
             except Exception as e:
                 event_data = self._create_event_data(
                     status="error",
-                    message=str(e),
+                    message=traceback.format_exc(),
                     files_sensed=None,
                 )
-                yield TriggerEvent(event_data.model_dump())
+                yield self.yield_even_data(event_data.status, event_data.message, event_data.files_sensed)
                 return
