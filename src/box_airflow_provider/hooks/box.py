@@ -102,7 +102,8 @@ class BoxHook(BaseHook):
     def test_connection(self) -> (bool, str):
         """Test a connection"""
         conn = self.get_conn()
-        user = conn.users.get_user_me()
+        # Simple call to get_user_me to test the connection
+        conn.users.get_user_me()
         return True, "Connection successfully tested"
 
     def get_item_id(self, path: str, item_type: Literal['file', 'folder']) -> str:
