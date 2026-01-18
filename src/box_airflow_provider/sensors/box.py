@@ -35,6 +35,7 @@ class BoxSensor(BaseSensorOperator):
             path: str,
             file_pattern: str = "",
             newer_than: datetime | str | None = None,
+            hook: BoxHook | None = None,
             python_callable: Callable | None = None,
             op_args: list | None = None,
             op_kwargs: dict[str, any] | None = None,
@@ -44,7 +45,7 @@ class BoxSensor(BaseSensorOperator):
         super().__init__(**kwargs)
         self.path = path
         self.file_pattern = file_pattern
-        self.hook: BoxHook | None = None
+        self.hook: BoxHook | None = hook
         self.box_conn_id = box_conn_id
         self.newer_than: datetime | str | None = newer_than
         self.python_callable: Callable | None = python_callable
@@ -53,7 +54,8 @@ class BoxSensor(BaseSensorOperator):
         self.deferrable = deferrable
 
     def poke(self, context: Context) -> PokeReturnValue | bool:
-        self.hook = BoxHook(self.box_conn_id)
+        if self.hook is None:
+            self.hook = BoxHook(self.box_conn_id)
         self.log.debug("Poking for %s, with pattern %s", self.path, self.file_pattern)
         files_found = []
 

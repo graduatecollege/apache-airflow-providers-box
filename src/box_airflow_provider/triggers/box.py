@@ -22,6 +22,7 @@ class BoxTrigger(BaseTrigger):
             box_conn_id: str = BoxHook.default_conn_name,
             newer_than: datetime | str | None = None,
             poke_interval: float = 60,
+            hook: BoxHook | None = None,
             files_sensed: list[tuple[str, str]] | None = None,
             status: str = "",
             message: str = "",
@@ -32,6 +33,7 @@ class BoxTrigger(BaseTrigger):
         self.box_conn_id = box_conn_id
         self.newer_than = newer_than
         self.poke_interval = poke_interval
+        self.hook = hook
         self.files_sensed = files_sensed
         self.status = status
         self.message = message
@@ -78,7 +80,7 @@ class BoxTrigger(BaseTrigger):
         - If file pattern was not provided, it looks directly into the specific path provided.
         - If newer_than datetime was provided, it checks the file's last modified time.
         """
-        hook = BoxHook(self.box_conn_id)
+        hook = self.hook or BoxHook(self.box_conn_id)
         if isinstance(self.newer_than, str):
             self.newer_than = parse(self.newer_than)
         _newer_than = pendulum.instance(self.newer_than) if self.newer_than else None

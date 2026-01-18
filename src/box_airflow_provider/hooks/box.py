@@ -5,6 +5,7 @@ from datetime import datetime
 from os.path import relpath
 from dataclasses import dataclass
 from typing import Any, Literal
+from collections.abc import Callable
 
 from airflow.hooks.base import BaseHook
 from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig, FileFull
@@ -70,13 +71,19 @@ class BoxHook(BaseHook):
 
     def __init__(
             self,
-            box_conn_id: str = default_conn_name
+            box_conn_id: str = default_conn_name,
+            client: BoxClient | None = None,
+            client_factory: Callable[[], BoxClient] | None = None,
     ) -> None:
         super().__init__()
         self.box_conn_id = box_conn_id
-        self.client: BoxClient | None = None
+        self.client: BoxClient | None = client
+        self.client_factory = client_factory
 
     def get_conn(self) -> BoxClient:
+        if self.client_factory is not None:
+            return self.client_factory()
+
         if self.box_conn_id and not self.client:
             conn = self.get_connection(self.box_conn_id)
             extra = conn.get_extra_dejson()
