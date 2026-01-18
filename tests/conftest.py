@@ -128,6 +128,11 @@ class FakeBoxEnvironment:
         self._file_content[file_id] = content
         return file_id
 
+    def set_file_modified_at(self, file_id: str, modified_at: datetime | None) -> None:
+        """Update a seeded file's modified time."""
+        item = self._items[file_id]
+        item.modified_at = modified_at
+
     def get_folder_items(self, folder_id: str, *, fields: list[str] | None = None) -> Any:
         # `fields` exists only to match the real SDK call signature.
         children = self._children.get(folder_id, {})

@@ -1,5 +1,5 @@
-box-airflow-provider
-Copyright 2025 University of Illinois Board of Trustees. All Rights Reserved.
+apache-airflow-providers-box
+Copyright 2026 University of Illinois Board of Trustees. All Rights Reserved.
 
 Files that include a header stating "ASF" and their source were initially
 developed by The Apache Software Foundation (http://www.apache.org/)

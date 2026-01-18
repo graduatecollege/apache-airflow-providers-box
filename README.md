@@ -1,4 +1,4 @@
-# box-airflow-provider
+# apache-airflow-providers-box
 
 Provider for integrating Box.com with Apache Airflow. Written for Apache Airflow 2.11.0.
 
