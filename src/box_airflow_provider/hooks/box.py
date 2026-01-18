@@ -1,14 +1,18 @@
 import fnmatch
 import logging
 import os
+from datetime import datetime
 from os.path import relpath
+from dataclasses import dataclass
 from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
-from boxsdk import Client, CCGAuth
-from pydantic import BaseModel
+from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig, FileFull
+from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField, UploadFileVersionAttributes
+from box_sdk_gen.managers.folders import CreateFolderParent
 
-class BoxFileInfo(BaseModel):
+@dataclass
+class BoxFileInfo:
     """
     Information about a Box file.
 
@@ -19,8 +23,8 @@ class BoxFileInfo(BaseModel):
     name: str
     type: str
     size: int
-    created_at: str
-    modified_at: str
+    created_at: datetime | None
+    modified_at: datetime | None
     path: str
     new: bool
 
@@ -70,9 +74,9 @@ class BoxHook(BaseHook):
     ) -> None:
         super().__init__()
         self.box_conn_id = box_conn_id
-        self.client: Client | None = None
+        self.client: BoxClient | None = None
 
-    def get_conn(self) -> Client:
+    def get_conn(self) -> BoxClient:
         if self.box_conn_id and not self.client:
             conn = self.get_connection(self.box_conn_id)
             extra = conn.get_extra_dejson()
@@ -83,21 +87,23 @@ class BoxHook(BaseHook):
             if not client_id or not client_secret or not enterprise_id:
                 raise ValueError("Client ID, Client Secret and Enterprise ID must be provided in connection")
 
-            auth = CCGAuth(
+            ccg_config = CCGConfig(
                 client_id=client_id,
                 client_secret=client_secret,
                 enterprise_id=enterprise_id,
             )
+            auth = BoxCCGAuth(config=ccg_config)
 
-            self.client = Client(auth)
-            logging.getLogger("boxsdk").setLevel(logging.WARNING)
+            self.client = BoxClient(auth=auth)
+            logging.getLogger("box_sdk_gen").setLevel(logging.WARNING)
 
         return self.client
 
     def test_connection(self) -> (bool, str):
         """Test a connection"""
         conn = self.get_conn()
-        user = conn.user().get()
+        # Simple call to get_user_me to test the connection
+        conn.users.get_user_me()
         return True, "Connection successfully tested"
 
     def get_item_id(self, path: str, item_type: Literal['file', 'folder']) -> str:
@@ -154,12 +160,12 @@ class BoxHook(BaseHook):
             if not folder_name:
                 continue
 
-            items = client.folder(folder_id=current_folder_id).get_items()
+            items = client.folders.get_folder_items(folder_id=current_folder_id)
 
             found = False
-            for item in items:
-                if item.type == 'folder' and item.name == folder_name:
-                    current_folder_id = item.object_id
+            for item in items.entries:
+                if item.type.value == 'folder' and item.name == folder_name:
+                    current_folder_id = item.id
                     current_path = f"{current_path.rstrip('/')}/{folder_name}"
                     found = True
                     break
@@ -173,11 +179,11 @@ class BoxHook(BaseHook):
 
         # If looking for a file, find the file in the final folder
         if item_type == 'file' and file_name:
-            items = client.folder(folder_id=current_folder_id).get_items()
+            items = client.folders.get_folder_items(folder_id=current_folder_id)
 
-            for item in items:
-                if item.type == 'file' and item.name == file_name:
-                    return item.object_id, None
+            for item in items.entries:
+                if item.type.value == 'file' and item.name == file_name:
+                    return item.id, None
 
             raise FileNotFoundError(f"File '{file_name}' not found in folder")
 
@@ -213,7 +219,7 @@ class BoxHook(BaseHook):
         file_id = self.get_file_id(path)
 
         client = self.get_conn()
-        box_file = client.file(file_id=file_id).get()
+        box_file = client.files.get_file_by_id(file_id=file_id)
 
         return box_file_to_file_info(box_file)
 
@@ -239,11 +245,11 @@ class BoxHook(BaseHook):
         client = self.get_conn()
         folder_id = self.get_folder_id(path)
 
-        items = client.folder(folder_id=folder_id).get_items(fields=['name', 'type', 'size', 'created_at', 'modified_at', 'path_collection'])
+        items = client.folders.get_folder_items(folder_id=folder_id, fields=['name', 'type', 'size', 'created_at', 'modified_at', 'path_collection'])
 
         matching_files = []
-        for item in items:
-            if item.type == 'file' and fnmatch.fnmatch(item.name, file_pattern):
+        for item in items.entries:
+            if item.type.value == 'file' and fnmatch.fnmatch(item.name, file_pattern):
                 matching_files.append(box_file_to_file_info(item))
 
         return matching_files
@@ -268,26 +274,35 @@ class BoxHook(BaseHook):
         folder_id = self.create_folder(box_directory)
 
         # Check if file already exists and perform update if it does
-        existing_items = client.folder(folder_id=folder_id).get_items()
+        existing_items = client.folders.get_folder_items(folder_id=folder_id)
         file_already_exists = False
         existing_file_id = None
 
-        for item in existing_items:
+        for item in existing_items.entries:
             if item.name == filename:
-                if item.type == 'file':
+                if item.type.value == 'file':
                     file_already_exists = True
-                    existing_file_id = item.object_id
-                elif item.type == 'folder':
+                    existing_file_id = item.id
+                elif item.type.value == 'folder':
                     raise ValueError(f"A folder with the name '{filename}' already exists in the destination path.")
                 break
 
         if file_already_exists and existing_file_id:
-            uploaded_file = client.file(file_id=existing_file_id).update_contents(local_file_path)
+            with open(local_file_path, 'rb') as file_stream:
+                uploaded_file = client.uploads.upload_file_version(
+                    file_id=existing_file_id, 
+                    attributes=UploadFileVersionAttributes(name=filename), 
+                    file=file_stream
+                )
         else:
-            uploaded_file = client.folder(folder_id=folder_id).upload(local_file_path, filename)
+            with open(local_file_path, 'rb') as file_stream:
+                uploaded_file = client.uploads.upload_file(
+                    attributes=UploadFileAttributes(name=filename, parent=UploadFileAttributesParentField(id=folder_id)), 
+                    file=file_stream
+                )
 
-
-        file_info = box_file_to_file_info(uploaded_file)
+        # Get the file info - the response is Files object with entries
+        file_info = box_file_to_file_info(uploaded_file.entries[0])
         file_info.new = not file_already_exists
 
         return file_info
@@ -315,8 +330,8 @@ class BoxHook(BaseHook):
 
         # Create the remaining folders
         for folder_name in remaining_path.split('/'):
-            folder = client.folder(folder_id=current_folder_id).create_subfolder(folder_name)
-            current_folder_id = folder.object_id
+            folder = client.folders.create_folder(name=folder_name, parent=CreateFolderParent(id=current_folder_id))
+            current_folder_id = folder.id
 
         return current_folder_id
 
@@ -334,11 +349,19 @@ class BoxHook(BaseHook):
             file_id = self.get_file_id(box_path)
 
         client = self.get_conn()
-        box_file = client.file(file_id=file_id)
-        info = box_file_to_file_info(box_file.get())
+        box_file = client.files.get_file_by_id(file_id=file_id)
+        info = box_file_to_file_info(box_file)
 
-        with open(local_file_path, "wb") as local_file:
-            box_file.download_to(local_file)
+        file_content = client.downloads.download_file(file_id=file_id)
+        # The download_file returns a file-like object, use context manager to ensure proper cleanup
+        if file_content:
+            try:
+                with open(local_file_path, "wb") as local_file:
+                    local_file.write(file_content.read())
+            finally:
+                # Ensure the stream is closed even if write fails
+                if hasattr(file_content, 'close'):
+                    file_content.close()
 
         return info
 
@@ -355,25 +378,31 @@ class BoxHook(BaseHook):
             file_id = self.get_file_id(box_path)
 
         client = self.get_conn()
-        box_file = client.file(file_id=file_id)
-        box_file.delete()
+        client.files.delete_file_by_id(file_id=file_id)
 
 
-def box_file_to_file_info(box_file) -> BoxFileInfo:
+def box_file_to_file_info(box_file: FileFull) -> BoxFileInfo:
     """
     Convert a Box file object to a BoxFileInfo object.
 
     :param box_file: The Box file object to convert.
     :return: A BoxFileInfo object with the file's information.
     """
+    # Build the path from path_collection if available
+    if hasattr(box_file, 'path_collection') and box_file.path_collection and box_file.path_collection.entries:
+        path_parts = [it.name for it in box_file.path_collection.entries[1::]]
+        path = '/' + '/'.join(path_parts) + '/' + box_file.name
+    else:
+        path = '/' + box_file.name
+    
     return BoxFileInfo(
-        object_id=box_file.object_id,
+        object_id=box_file.id,
         name=box_file.name,
-        type=box_file.type,
+        type=box_file.type.value,
         # Use the size attribute if available, otherwise default to 0
-        size= box_file.size if hasattr(box_file, 'size') else 0,
-        created_at=box_file.created_at if hasattr(box_file, 'created_at') else None,
-        modified_at=box_file.modified_at if hasattr(box_file, 'modified_at') else None,
-        path='/' + '/'.join([it.name for it in box_file.path_collection['entries'][1::]]) + '/' + box_file.name,
+        size=box_file.size if hasattr(box_file, 'size') and box_file.size is not None else 0,
+        created_at=box_file.created_at if hasattr(box_file, 'created_at') and box_file.created_at is not None else None,
+        modified_at=box_file.modified_at if hasattr(box_file, 'modified_at') and box_file.modified_at is not None else None,
+        path=path,
         new=False
     )

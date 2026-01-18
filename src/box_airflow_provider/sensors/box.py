@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Callable, Any
 
+import pendulum
 from airflow.configuration import conf
 from airflow.exceptions import AirflowException
 from airflow.sensors.base import BaseSensorOperator, PokeReturnValue
@@ -73,19 +74,28 @@ class BoxSensor(BaseSensorOperator):
 
             if self.newer_than and self.newer_than != "None":
                 if isinstance(self.newer_than, str):
-                    self.newer_than = parse(self.newer_than)
-                _mod_time = convert_to_utc(parse(mod_time))
-                _newer_than = convert_to_utc(self.newer_than)
+                    _newer_than = parse(self.newer_than)
+                elif isinstance(self.newer_than, datetime):
+                    _newer_than = pendulum.instance(self.newer_than)
+                else:
+                    raise ValueError(f"Invalid newer_than value: {self.newer_than}")
+
+                if isinstance(mod_time, str):
+                    _mod_time = parse(mod_time)
+                else:
+                    _mod_time = pendulum.instance(mod_time)
+
+
                 if _newer_than <= _mod_time:
                     files_found.append(file_info)
-                    self.log.debug(
+                    self.log.info(
                         "File %s has modification time: '%s', which is newer than: '%s'",
                         file_info.path,
                         str(_mod_time),
                         str(_newer_than),
                     )
                 else:
-                    self.log.debug(
+                    self.log.info(
                         "File %s has modification time: '%s', which is older than: '%s'",
                         file_info.path,
                         str(_mod_time),
@@ -123,9 +133,7 @@ class BoxSensor(BaseSensorOperator):
                 method_name="execute_complete",
             )
 
-    def execute_complete(self, context: Context, event: dict[str, Any]) -> None:
-        self.log.info("Trigger event received: %s", event)
-
+    def execute_complete(self, context: Context, event: dict[str, Any] | None = None) -> None:
         if event["status"] == "success":
             self.log.info(event["message"])
             return event["files_sensed"]
