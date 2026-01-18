@@ -6,6 +6,8 @@ from typing import Any, Literal
 
 from airflow.hooks.base import BaseHook
 from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig
+from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField, UploadFileVersionAttributes
+from box_sdk_gen.managers.folders import CreateFolderParent
 from pydantic import BaseModel
 
 class BoxFileInfo(BaseModel):
@@ -284,7 +286,6 @@ class BoxHook(BaseHook):
 
         if file_already_exists and existing_file_id:
             with open(local_file_path, 'rb') as file_stream:
-                from box_sdk_gen.managers.uploads import UploadFileVersionAttributes
                 uploaded_file = client.uploads.upload_file_version(
                     file_id=existing_file_id, 
                     attributes=UploadFileVersionAttributes(name=filename), 
@@ -292,7 +293,6 @@ class BoxHook(BaseHook):
                 )
         else:
             with open(local_file_path, 'rb') as file_stream:
-                from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField
                 uploaded_file = client.uploads.upload_file(
                     attributes=UploadFileAttributes(name=filename, parent=UploadFileAttributesParentField(id=folder_id)), 
                     file=file_stream
@@ -326,7 +326,6 @@ class BoxHook(BaseHook):
             return current_folder_id
 
         # Create the remaining folders
-        from box_sdk_gen.managers.folders import CreateFolderParent
         for folder_name in remaining_path.split('/'):
             folder = client.folders.create_folder(name=folder_name, parent=CreateFolderParent(id=current_folder_id))
             current_folder_id = folder.id
@@ -350,10 +349,10 @@ class BoxHook(BaseHook):
         box_file = client.files.get_file_by_id(file_id=file_id)
         info = box_file_to_file_info(box_file)
 
-        with open(local_file_path, "wb") as local_file:
-            file_content = client.downloads.download_file(file_id=file_id)
-            # The download_file returns a file-like object, read and write it
-            if file_content:
+        file_content = client.downloads.download_file(file_id=file_id)
+        # The download_file returns a file-like object, read and write it
+        if file_content:
+            with open(local_file_path, "wb") as local_file:
                 local_file.write(file_content.read())
 
         return info
