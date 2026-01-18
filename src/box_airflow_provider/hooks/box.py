@@ -350,10 +350,15 @@ class BoxHook(BaseHook):
         info = box_file_to_file_info(box_file)
 
         file_content = client.downloads.download_file(file_id=file_id)
-        # The download_file returns a file-like object, read and write it
+        # The download_file returns a file-like object, use context manager to ensure proper cleanup
         if file_content:
-            with open(local_file_path, "wb") as local_file:
-                local_file.write(file_content.read())
+            try:
+                with open(local_file_path, "wb") as local_file:
+                    local_file.write(file_content.read())
+            finally:
+                # Ensure the stream is closed even if write fails
+                if hasattr(file_content, 'close'):
+                    file_content.close()
 
         return info
 
@@ -380,14 +385,21 @@ def box_file_to_file_info(box_file) -> BoxFileInfo:
     :param box_file: The Box file object to convert.
     :return: A BoxFileInfo object with the file's information.
     """
+    # Build the path from path_collection if available
+    if hasattr(box_file, 'path_collection') and box_file.path_collection and box_file.path_collection.entries:
+        path_parts = [it.name for it in box_file.path_collection.entries[1::]]
+        path = '/' + '/'.join(path_parts) + '/' + box_file.name
+    else:
+        path = '/' + box_file.name
+    
     return BoxFileInfo(
         object_id=box_file.id,
         name=box_file.name,
         type=box_file.type.value,
         # Use the size attribute if available, otherwise default to 0
-        size= box_file.size if hasattr(box_file, 'size') and box_file.size is not None else 0,
+        size=box_file.size if hasattr(box_file, 'size') and box_file.size is not None else 0,
         created_at=box_file.created_at if hasattr(box_file, 'created_at') and box_file.created_at is not None else None,
         modified_at=box_file.modified_at if hasattr(box_file, 'modified_at') and box_file.modified_at is not None else None,
-        path='/' + '/'.join([it.name for it in box_file.path_collection.entries[1::]]) + '/' + box_file.name if hasattr(box_file, 'path_collection') and box_file.path_collection and box_file.path_collection.entries else '/' + box_file.name,
+        path=path,
         new=False
     )
