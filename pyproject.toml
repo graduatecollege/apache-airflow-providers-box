@@ -11,9 +11,15 @@ authors = [
     { name = "Mikael Arvola", email = "marvel@illinois.edu" },
 
 ]
-license = { text = "Apache License 2.0" }
+license = "Apache-2.0"
 description = "Box.com provider for Apache Airflow."
+keywords = ["airflow", "provider", "box", "box.com", "apache-airflow"]
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
     "Framework :: Apache Airflow",
     "Framework :: Apache Airflow :: Provider",
 ]
