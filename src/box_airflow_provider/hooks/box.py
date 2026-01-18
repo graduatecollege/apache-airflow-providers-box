@@ -284,16 +284,22 @@ class BoxHook(BaseHook):
 
         if file_already_exists and existing_file_id:
             with open(local_file_path, 'rb') as file_stream:
-                uploaded_file = client.files.upload_file_version(file_id=existing_file_id, attributes={'name': filename}, file=file_stream)
+                from box_sdk_gen.managers.uploads import UploadFileVersionAttributes
+                uploaded_file = client.uploads.upload_file_version(
+                    file_id=existing_file_id, 
+                    attributes=UploadFileVersionAttributes(name=filename), 
+                    file=file_stream
+                )
         else:
             with open(local_file_path, 'rb') as file_stream:
-                uploaded_file = client.uploads.upload_file(attributes={'name': filename, 'parent': {'id': folder_id}}, file=file_stream)
+                from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField
+                uploaded_file = client.uploads.upload_file(
+                    attributes=UploadFileAttributes(name=filename, parent=UploadFileAttributesParentField(id=folder_id)), 
+                    file=file_stream
+                )
 
-        # Get the file info - the response is different for upload vs update
-        if file_already_exists:
-            file_info = box_file_to_file_info(uploaded_file.entries[0])
-        else:
-            file_info = box_file_to_file_info(uploaded_file.entries[0])
+        # Get the file info - the response is Files object with entries
+        file_info = box_file_to_file_info(uploaded_file.entries[0])
         file_info.new = not file_already_exists
 
         return file_info
@@ -320,8 +326,9 @@ class BoxHook(BaseHook):
             return current_folder_id
 
         # Create the remaining folders
+        from box_sdk_gen.managers.folders import CreateFolderParent
         for folder_name in remaining_path.split('/'):
-            folder = client.folders.create_folder(name=folder_name, parent={'id': current_folder_id})
+            folder = client.folders.create_folder(name=folder_name, parent=CreateFolderParent(id=current_folder_id))
             current_folder_id = folder.id
 
         return current_folder_id
@@ -345,7 +352,9 @@ class BoxHook(BaseHook):
 
         with open(local_file_path, "wb") as local_file:
             file_content = client.downloads.download_file(file_id=file_id)
-            local_file.write(file_content)
+            # The download_file returns a file-like object, read and write it
+            if file_content:
+                local_file.write(file_content.read())
 
         return info
 
