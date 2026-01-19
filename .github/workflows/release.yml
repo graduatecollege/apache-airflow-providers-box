@@ -13,6 +13,7 @@ jobs:
   build:
     name: Build and publish Python distribution to PyPI
     runs-on: ubuntu-latest
+    environment: pypi
 
     steps:
       - name: Check out the repository
