@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, contextmanager, _GeneratorContextManager
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 import asyncio
 from unittest.mock import patch
 
@@ -40,7 +39,7 @@ def patched_asyncio_for_tests(
     *,
     sleep_patch_target: str = "asyncio.sleep",
     to_thread_patch_target: str = "asyncio.to_thread",
-) -> tuple[Callable[[], Any], SleepController]:
+) -> tuple[Callable[..., _GeneratorContextManager[Any, None, None]], SleepController]:
     """
     Return a contextmanager that patches `asyncio.sleep`/`asyncio.to_thread`
     and a sleep counter.

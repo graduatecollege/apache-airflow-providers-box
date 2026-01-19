@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:117c82452f90e6e3746153a993b116ce13f587addc11d82a8b57f2735f898491"
+content_hash = "sha256:ab6cfdf9bdbe78abd0bd0a6afa765fe227ee0208cbe8a55d15dd26f502a378df"
 
 [[metadata.targets]]
 requires_python = "~=3.12.0"
@@ -1532,6 +1532,18 @@ dependencies = [
 files = [
     {file = "pytest_asyncio-1.3.0-py3-none-any.whl", hash = "sha256:611e26147c7f77640e6d0a92a38ed17c3e9848063698d5c93d5aa7aa11cebff5"},
     {file = "pytest_asyncio-1.3.0.tar.gz", hash = "sha256:d7f52f36d231b80ee124cd216ffb19369aa168fc10095013c6b014a34d3ee9e5"},
+]
+
+[[package]]
+name = "pytest-timeout"
+version = "2.4.0"
+summary = ""
+dependencies = [
+    "pytest",
+]
+files = [
+    {file = "pytest_timeout-2.4.0-py3-none-any.whl", hash = "sha256:c42667e5cdadb151aeb5b26d114aff6bdf5a907f176a007a30b940d3d865b5c2"},
+    {file = "pytest_timeout-2.4.0.tar.gz", hash = "sha256:7e68e90b01f9eff71332b25001f85c75495fc4e3a836701876183c4bcfd0540a"},
 ]
 
 [[package]]

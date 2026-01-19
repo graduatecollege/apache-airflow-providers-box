@@ -1,7 +1,7 @@
 # read version from version.txt
 from os import path
 
-__version__ = open(path.join(path.dirname(__file__), 'version.txt')).read().strip()
+__version__ = open(path.join(path.dirname(__file__), '_version.txt')).read().strip()
 
 ## This is needed to allow Airflow to pick up specific metadata fields it needs for certain features.
 def get_provider_info():

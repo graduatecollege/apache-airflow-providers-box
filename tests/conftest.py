@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import sys
-import types
 from pathlib import Path
 
 from dataclasses import dataclass
@@ -12,50 +11,6 @@ from typing import Any
 import io
 
 import pytest
-
-
-def _install_box_sdk_gen_stubs() -> None:
-    """
-    Provide minimal `box_sdk_gen` stubs so unit tests don't require the real Box SDK.
-    """
-
-    if "box_sdk_gen" in sys.modules:
-        return
-
-    box_sdk_gen = types.ModuleType("box_sdk_gen")
-
-    class _Stub:
-        def __init__(self, *args, **kwargs):
-            # Keep the passed data so tests can assert against call parameters.
-            # Provider code only needs these objects to be constructible.
-            self._args = args
-            for key, value in kwargs.items():
-                setattr(self, key, value)
-
-    # Top-level names imported by provider code
-    box_sdk_gen.BoxClient = _Stub
-    box_sdk_gen.BoxCCGAuth = _Stub
-    box_sdk_gen.CCGConfig = _Stub
-    box_sdk_gen.FileFull = _Stub
-
-    # Submodules: `box_sdk_gen.managers.uploads`
-    managers = types.ModuleType("box_sdk_gen.managers")
-    uploads = types.ModuleType("box_sdk_gen.managers.uploads")
-    uploads.UploadFileAttributes = _Stub
-    uploads.UploadFileAttributesParentField = _Stub
-    uploads.UploadFileVersionAttributes = _Stub
-
-    # Submodules: `box_sdk_gen.managers.folders`
-    folders = types.ModuleType("box_sdk_gen.managers.folders")
-    folders.CreateFolderParent = _Stub
-
-    sys.modules["box_sdk_gen"] = box_sdk_gen
-    sys.modules["box_sdk_gen.managers"] = managers
-    sys.modules["box_sdk_gen.managers.uploads"] = uploads
-    sys.modules["box_sdk_gen.managers.folders"] = folders
-
-
-_install_box_sdk_gen_stubs()
 
 
 @dataclass
@@ -90,10 +45,20 @@ class FakeBoxEnvironment:
 
     def __init__(self) -> None:
         self._next_id = 1
+        """ Next available item ID """
+
         self._items: dict[str, FakeBoxItem] = {}
+        """ Map of all item IDs to their metadata """
+
         self._children: dict[str, dict[str, str]] = {self.ROOT_ID: {}}
+        """ Map of all parent IDs to their child IDs """
+
         self._file_content: dict[str, bytes] = {}
+        """ Map of all file IDs to their content """
+
         self.last_download_stream: io.BytesIO | None = None
+        """ Last downloaded file stream, if any """
+
         # Root folder exists implicitly.
         self._items[self.ROOT_ID] = FakeBoxItem(
             id=self.ROOT_ID,
@@ -134,7 +99,6 @@ class FakeBoxEnvironment:
         item.modified_at = modified_at
 
     def get_folder_items(self, folder_id: str, *, fields: list[str] | None = None) -> Any:
-        # `fields` exists only to match the real SDK call signature.
         children = self._children.get(folder_id, {})
         entries = [self._items[item_id] for item_id in children.values()]
         return SimpleNamespace(entries=entries)
@@ -227,11 +191,15 @@ class FakeBoxEnvironment:
 
 
 class _FakeUsersManager:
+    """Fake for client.users"""
+
     def get_user_me(self) -> Any:  # pragma: no cover
         return SimpleNamespace(id="me")
 
 
 class _FakeFoldersManager:
+    """Fake for client.folders"""
+
     def __init__(self, env: FakeBoxEnvironment) -> None:
         self._env = env
 
@@ -243,6 +211,8 @@ class _FakeFoldersManager:
 
 
 class _FakeFilesManager:
+    """Fake for client.files"""
+
     def __init__(self, env: FakeBoxEnvironment) -> None:
         self._env = env
 
@@ -254,6 +224,8 @@ class _FakeFilesManager:
 
 
 class _FakeUploadsManager:
+    """Fake for client.uploads"""
+
     def __init__(self, env: FakeBoxEnvironment) -> None:
         self._env = env
 
@@ -265,6 +237,8 @@ class _FakeUploadsManager:
 
 
 class _FakeDownloadsManager:
+    """Fake for client.downloads"""
+
     def __init__(self, env: FakeBoxEnvironment) -> None:
         self._env = env
 
@@ -283,7 +257,7 @@ class FakeBoxClient:
 
 
 @pytest.fixture()
-def box_env() -> FakeBoxEnvironment:
+def box_fake() -> FakeBoxEnvironment:
     """Reusable fake Box environment with a known empty root (id='0')."""
     return FakeBoxEnvironment()
 

@@ -13,8 +13,8 @@ from box_airflow_provider.triggers.box import BoxTrigger
 from tests.async_test_utils import patched_asyncio_for_tests
 
 
-def _hook_for(box_env) -> BoxHook:
-    return BoxHook(client_factory=box_env.client)
+def _hook_for(box_fake) -> BoxHook:
+    return BoxHook(client_factory=box_fake.client)
 
 
 async def _assert_trigger_sleeps(trigger: BoxTrigger, controller) -> None:
@@ -29,24 +29,10 @@ async def _assert_trigger_sleeps(trigger: BoxTrigger, controller) -> None:
 
 
 @pytest.mark.asyncio
-async def test_run_with_pattern_no_files_continues_to_sleep(box_env):
-    box_env.seed_folder("/data")
+async def test_run_with_pattern_no_files_continues_to_sleep(box_fake):
+    box_fake.seed_folder("/data")
 
-    trigger = BoxTrigger(path="/data", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_env))
-
-    cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="box_airflow_provider.triggers.box.asyncio.sleep",
-        to_thread_patch_target="box_airflow_provider.triggers.box.asyncio.to_thread",
-    )
-    with cm():
-        await _assert_trigger_sleeps(trigger, controller)
-
-
-@pytest.mark.asyncio
-async def test_run_with_pattern_files_dont_match_continues_to_sleep(box_env):
-    box_env.seed_file("/data/x.txt", modified_at=pendulum.datetime(2025, 1, 1, tz="UTC"))
-
-    trigger = BoxTrigger(path="/data", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_env))
+    trigger = BoxTrigger(path="/data", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_fake))
 
     cm, controller = patched_asyncio_for_tests(
         sleep_patch_target="box_airflow_provider.triggers.box.asyncio.sleep",
@@ -57,16 +43,30 @@ async def test_run_with_pattern_files_dont_match_continues_to_sleep(box_env):
 
 
 @pytest.mark.asyncio
-async def test_run_with_pattern_matching_files_but_older_continues_to_sleep(box_env):
+async def test_run_with_pattern_files_dont_match_continues_to_sleep(box_fake):
+    box_fake.seed_file("/data/x.txt", modified_at=pendulum.datetime(2025, 1, 1, tz="UTC"))
+
+    trigger = BoxTrigger(path="/data", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_fake))
+
+    cm, controller = patched_asyncio_for_tests(
+        sleep_patch_target="box_airflow_provider.triggers.box.asyncio.sleep",
+        to_thread_patch_target="box_airflow_provider.triggers.box.asyncio.to_thread",
+    )
+    with cm():
+        await _assert_trigger_sleeps(trigger, controller)
+
+
+@pytest.mark.asyncio
+async def test_run_with_pattern_matching_files_but_older_continues_to_sleep(box_fake):
     newer_than = pendulum.datetime(2025, 1, 1, tz="UTC")
-    box_env.seed_file("/data/f.csv", modified_at=pendulum.datetime(2024, 12, 31, 23, 59, 59, tz="UTC"))
+    box_fake.seed_file("/data/f.csv", modified_at=pendulum.datetime(2024, 12, 31, 23, 59, 59, tz="UTC"))
 
     trigger = BoxTrigger(
         path="/data",
         file_pattern="*.csv",
         newer_than=newer_than,
         poke_interval=0.01,
-        hook=_hook_for(box_env),
+        hook=_hook_for(box_fake),
     )
 
     cm, controller = patched_asyncio_for_tests(
@@ -78,16 +78,16 @@ async def test_run_with_pattern_matching_files_but_older_continues_to_sleep(box_
 
 
 @pytest.mark.asyncio
-async def test_run_with_pattern_matching_files_and_newer_triggers(box_env):
+async def test_run_with_pattern_matching_files_and_newer_triggers(box_fake):
     newer_than = pendulum.datetime(2025, 1, 1, tz="UTC")
-    file_id = box_env.seed_file("/data/f.csv", modified_at=pendulum.datetime(2025, 1, 1, 0, 0, 0, tz="UTC"))
+    file_id = box_fake.seed_file("/data/f.csv", modified_at=pendulum.datetime(2025, 1, 1, 0, 0, 0, tz="UTC"))
 
     trigger = BoxTrigger(
         path="/data",
         file_pattern="*.csv",
         newer_than=newer_than,
         poke_interval=0.01,
-        hook=_hook_for(box_env),
+        hook=_hook_for(box_fake),
     )
 
     cm, controller = patched_asyncio_for_tests(
@@ -104,8 +104,8 @@ async def test_run_with_pattern_matching_files_and_newer_triggers(box_env):
 
 
 @pytest.mark.asyncio
-async def test_run_folder_does_not_exist_triggers_error(box_env):
-    trigger = BoxTrigger(path="/missing", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_env))
+async def test_run_folder_does_not_exist_triggers_error(box_fake):
+    trigger = BoxTrigger(path="/missing", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_fake))
 
     cm, controller = patched_asyncio_for_tests(
         sleep_patch_target="box_airflow_provider.triggers.box.asyncio.sleep",
@@ -121,9 +121,9 @@ async def test_run_folder_does_not_exist_triggers_error(box_env):
 
 
 @pytest.mark.asyncio
-async def test_run_initially_older_then_updated_triggers(box_env):
+async def test_run_initially_older_then_updated_triggers(box_fake):
     newer_than = datetime(2025, 1, 1, tzinfo=timezone.utc)
-    file_id = box_env.seed_file(
+    file_id = box_fake.seed_file(
         "/data/f.csv",
         modified_at=datetime(2024, 12, 31, 23, 59, 59, tzinfo=timezone.utc),
     )
@@ -133,7 +133,7 @@ async def test_run_initially_older_then_updated_triggers(box_env):
         file_pattern="*.csv",
         newer_than=newer_than,
         poke_interval=0.01,
-        hook=_hook_for(box_env),
+        hook=_hook_for(box_fake),
     )
 
     cm, controller = patched_asyncio_for_tests(
@@ -147,7 +147,7 @@ async def test_run_initially_older_then_updated_triggers(box_env):
         await controller.wait_for_sleep_calls(1)
         assert next_event_task.done() is False
 
-        box_env.set_file_modified_at(file_id, datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
+        box_fake.set_file_modified_at(file_id, datetime(2025, 1, 1, 0, 0, 0, tzinfo=timezone.utc))
 
         controller.release_next_sleep()
         event = await asyncio.wait_for(next_event_task, timeout=1)
@@ -157,8 +157,8 @@ async def test_run_initially_older_then_updated_triggers(box_env):
 
 
 @pytest.mark.asyncio
-async def test_run_without_pattern_file_not_found_continues_to_sleep(box_env):
-    trigger = BoxTrigger(path="/data/x.txt", file_pattern="", poke_interval=0.01, hook=_hook_for(box_env))
+async def test_run_without_pattern_file_not_found_continues_to_sleep(box_fake):
+    trigger = BoxTrigger(path="/data/x.txt", file_pattern="", poke_interval=0.01, hook=_hook_for(box_fake))
 
     cm, controller = patched_asyncio_for_tests(
         sleep_patch_target="box_airflow_provider.triggers.box.asyncio.sleep",
@@ -169,14 +169,14 @@ async def test_run_without_pattern_file_not_found_continues_to_sleep(box_env):
 
 
 @pytest.mark.asyncio
-async def test_run_without_pattern_file_exists_and_newer_triggers(box_env):
-    file_id = box_env.seed_file("/data/x.txt", modified_at=pendulum.datetime(2025, 1, 1, tz="UTC"))
+async def test_run_without_pattern_file_exists_and_newer_triggers(box_fake):
+    file_id = box_fake.seed_file("/data/x.txt", modified_at=pendulum.datetime(2025, 1, 1, tz="UTC"))
 
     trigger = BoxTrigger(
         path="/data/x.txt",
         newer_than="2025-01-01T00:00:00Z",
         poke_interval=0.01,
-        hook=_hook_for(box_env),
+        hook=_hook_for(box_fake),
     )
 
     cm, controller = patched_asyncio_for_tests(
