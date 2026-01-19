@@ -13,7 +13,6 @@ jobs:
   build:
     name: Build and publish Python distribution to PyPI
     runs-on: ubuntu-latest
-    environment: pypi
 
     steps:
       - name: Check out the repository
@@ -48,12 +47,20 @@ jobs:
   publish:
     name: Upload release to PyPI
     runs-on: ubuntu-latest
+    environment: pypi
     permissions:
       contents: read
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
+      - name: Setup PDM
+        uses: pdm-project/setup-pdm@94a823180e06fcde4ad29308721954a521c96ed0 # ratchet:pdm-project/setup-pdm@v4
+
+      - name: Install build dependencies
+        run: |
+          pdm install
+
       - name: Publish package distributions to PyPI
-        run: pdm publish --no-build
+        run: pdm publish
 
   create-release:
     runs-on: ubuntu-latest
