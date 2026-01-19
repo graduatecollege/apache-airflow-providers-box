@@ -36,6 +36,7 @@ provider_info = "box_airflow_provider.__init__:get_provider_info"
 
 [tool.pdm.version]
 source = "scm"
+version_format = "src.box_airflow_provider.version:format_version"
 tag_filter = "v*"
 tag_regex = '^v(?P<version>\d+\.\d+\.\d+)$'
 write_to = "box_airflow_provider/_version.txt"
