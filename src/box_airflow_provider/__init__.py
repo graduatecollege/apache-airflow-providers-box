@@ -1,10 +1,12 @@
-__version__ = "1.0.0"
+# read version from version.txt
+from os import path
 
+__version__ = open(path.join(path.dirname(__file__), '_version.txt')).read().strip()
 
 ## This is needed to allow Airflow to pick up specific metadata fields it needs for certain features.
 def get_provider_info():
     return {
-        "package-name": "box-airflow-provider",
+        "package-name": "apache-airflow-providers-box",
         "name": "Box",
         "description": "Apache Airflow provider for connecting to Box.com storage.",
         "connection-types": [

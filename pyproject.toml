@@ -1,17 +1,15 @@
 [build-system]
-requires = [
-    "setuptools",
-    "wheel"
-]
-build-backend = "setuptools.build_meta"
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
 
 [project]
-name = "box-airflow-provider"
+name = "apache-airflow-providers-box"
 authors = [
     { name = "Mikael Arvola", email = "marvel@illinois.edu" },
-
 ]
-license = { text = "Apache License 2.0" }
+license-files = [
+    "LICENSE", "NOTICE"
+]
 description = "Box.com provider for Apache Airflow."
 classifiers = [
     "Framework :: Apache Airflow",
@@ -36,5 +34,19 @@ content-type = "text/markdown"
 [project.entry-points.apache_airflow_provider]
 provider_info = "box_airflow_provider.__init__:get_provider_info"
 
-[tool.setuptools.dynamic]
-version = { attr = "box_airflow_provider.__version__" }
+[tool.pdm.version]
+source = "scm"
+tag_filter = "v*"
+tag_regex = '^v(?P<version>\d+\.\d+\.\d+)$'
+write_to = "box_airflow_provider/_version.txt"
+
+
+[tool.pdm.scripts]
+test = "pytest --timeout=5"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "pytest-timeout>=2.4.0",
+]
