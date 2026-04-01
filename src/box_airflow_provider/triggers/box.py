@@ -8,7 +8,7 @@ from typing import Any, AsyncIterator
 
 import pendulum
 from airflow.triggers.base import BaseTrigger, TriggerEvent
-from airflow.utils.timezone import parse
+from airflow.sdk.timezone import parse
 
 from box_airflow_provider.hooks.box import BoxHook, BoxFileInfo
 from box_airflow_provider.models import BoxTriggerEventData

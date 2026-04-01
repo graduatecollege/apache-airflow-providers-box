@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 from collections.abc import Callable
 
-from airflow.hooks.base import BaseHook
+from airflow.sdk.bases.hook import BaseHook
 from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig, FileFull
 from box_sdk_gen.managers.uploads import UploadFileAttributes, UploadFileAttributesParentField, UploadFileVersionAttributes
 from box_sdk_gen.managers.folders import CreateFolderParent

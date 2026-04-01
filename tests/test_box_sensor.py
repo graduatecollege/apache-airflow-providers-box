@@ -72,7 +72,7 @@ def test_poke_invalid_newer_than_type_raises():
 
 def test_execute_non_deferrable_calls_base_execute():
     sensor = BoxSensor(task_id="t", path="/x", deferrable=False)
-    with patch("airflow.sensors.base.BaseSensorOperator.execute") as base_execute:
+    with patch("airflow.sdk.bases.sensor.BaseSensorOperator.execute") as base_execute:
         sensor.execute(context={})
     base_execute.assert_called_once()
 
