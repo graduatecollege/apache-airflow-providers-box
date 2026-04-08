@@ -12,6 +12,7 @@ def get_provider_info():
         "connection-types": [
             {
                 "connection-type": "box",
+                "hook-name": "Box",
                 "hook-class-name": "box_airflow_provider.hooks.box.BoxHook"
             }
         ],

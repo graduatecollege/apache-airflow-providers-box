@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pendulum
 
-from airflow.decorators import dag, task
+from airflow.sdk import dag, task
 
 from box_airflow_provider.hooks.box import BoxHook
 from box_airflow_provider.operators.box import BoxDownloadOperator, BoxUploadOperator
