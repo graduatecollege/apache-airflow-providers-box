@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = []
 lock_version = "4.5.0"
-content_hash = "sha256:236aa54374dbafad2b87121a47dc16313112f9582c6035ac988b7d3dfc821e5b"
+content_hash = "sha256:98a5d70470a4a436ab41df4b2d915def7e152065c0ebf1d5d7d958ad72e4650b"
 
 [[metadata.targets]]
 requires_python = "~=3.14.0"
@@ -86,20 +86,20 @@ files = [
 
 [[package]]
 name = "apache-airflow"
-version = "3.2.0"
+version = "3.2.1"
 summary = ""
 dependencies = [
     "apache-airflow-core",
     "apache-airflow-task-sdk",
 ]
 files = [
-    {file = "apache_airflow-3.2.0-py3-none-any.whl", hash = "sha256:6758333a148aba68df48b9697d15733ff5cf53f50bb39642f15c50b2db203d1f"},
-    {file = "apache_airflow-3.2.0.tar.gz", hash = "sha256:06f644d874d629903a2a04accd4c240e1ef703a2bbc14832927cf30bb56ea381"},
+    {file = "apache_airflow-3.2.1-py3-none-any.whl", hash = "sha256:40ad5acdfa4711499815015691e020e4a849883efc32b8473525ff66aeaaeca7"},
+    {file = "apache_airflow-3.2.1.tar.gz", hash = "sha256:0369c10195401c3b6866f81c03a98c97395c3ceb10fe8e1498ef0bb748b11e8d"},
 ]
 
 [[package]]
 name = "apache-airflow-core"
-version = "3.2.0"
+version = "3.2.1"
 summary = ""
 dependencies = [
     "a2wsgi",
@@ -167,8 +167,8 @@ dependencies = [
     "uvicorn",
 ]
 files = [
-    {file = "apache_airflow_core-3.2.0-py3-none-any.whl", hash = "sha256:b04b35b1224549a20786aab37af73e1608e67830fda61341a3fcd7480f13192b"},
-    {file = "apache_airflow_core-3.2.0.tar.gz", hash = "sha256:187e944d5f51452659a492d5c6449e7f6d2ad22ffdb5813e9206f1c95881680e"},
+    {file = "apache_airflow_core-3.2.1-py3-none-any.whl", hash = "sha256:9f13bb8bde8ab5e4910c5fc2d1fd637af488f56e4c32c062c1de6dc83593a1b5"},
+    {file = "apache_airflow_core-3.2.1.tar.gz", hash = "sha256:737688a2df62b4827419161fccfb6c90e15d5eb4254c06a52014434d354931c1"},
 ]
 
 [[package]]
@@ -242,7 +242,7 @@ files = [
 
 [[package]]
 name = "apache-airflow-task-sdk"
-version = "1.2.0"
+version = "1.2.1"
 summary = ""
 dependencies = [
     "apache-airflow-core",
@@ -270,8 +270,8 @@ dependencies = [
     "typing-extensions",
 ]
 files = [
-    {file = "apache_airflow_task_sdk-1.2.0-py3-none-any.whl", hash = "sha256:a20b98493905ad879ec3f806a0b92da3f1f7fb95e1f196c0ff1985e6286aad4e"},
-    {file = "apache_airflow_task_sdk-1.2.0.tar.gz", hash = "sha256:d2c4d173388f751e1d900a3f5e67fea3518822b63dd20b60a1bdbf92cdf96e8c"},
+    {file = "apache_airflow_task_sdk-1.2.1-py3-none-any.whl", hash = "sha256:2816d191b0777034e69cc5a73b81a8cacaa77f6b95f6daa48f1563339a14c6f1"},
+    {file = "apache_airflow_task_sdk-1.2.1.tar.gz", hash = "sha256:ac9400cb477473a9d9eb6a5b50d2979fd1b0b50f96c6d29b4d0e924defc6179c"},
 ]
 
 [[package]]
@@ -312,15 +312,15 @@ files = [
 
 [[package]]
 name = "boxsdk"
-version = "10.6.0"
+version = "10.8.0"
 summary = ""
 dependencies = [
     "requests",
     "requests-toolbelt",
 ]
 files = [
-    {file = "boxsdk-10.6.0-py3-none-any.whl", hash = "sha256:a943783ecd05eef82568461b5fcb92e61b66590dfc25f36c2f268e0b8bdec8a0"},
-    {file = "boxsdk-10.6.0.tar.gz", hash = "sha256:629881753b5e1b5519908b1ce2d2f3983eb5933fd84746b68d9ce1cf8a44375c"},
+    {file = "boxsdk-10.8.0-py3-none-any.whl", hash = "sha256:93ad1fcae909f23f3a45f5b5567e537576eecb4c1dba03a895c0c65fb0f722eb"},
+    {file = "boxsdk-10.8.0.tar.gz", hash = "sha256:4c4407f4e7f37424f6749550658af4b8310e2cedce036afa9a3460fb4e73f986"},
 ]
 
 [[package]]
@@ -1208,11 +1208,11 @@ files = [
 
 [[package]]
 name = "pip"
-version = "26.0.1"
+version = "26.1"
 summary = ""
 files = [
-    {file = "pip-26.0.1-py3-none-any.whl", hash = "sha256:bdb1b08f4274833d62c1aa29e20907365a2ceb950410df15fc9521bad440122b"},
-    {file = "pip-26.0.1.tar.gz", hash = "sha256:c4037d8a277c89b320abe636d59f91e6d0922d08a05b60e85e53b296613346d8"},
+    {file = "pip-26.1-py3-none-any.whl", hash = "sha256:4e8486d821d814b77319acb7b9e8bf5a4ee7590a643e7cb21029f209be8573c1"},
+    {file = "pip-26.1.tar.gz", hash = "sha256:81e13ebcca3ffa8cc85e4deff5c27e1ee26dea0aa7fc2f294a073ac208806ff3"},
 ]
 
 [[package]]
