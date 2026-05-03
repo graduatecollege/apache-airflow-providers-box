@@ -1,6 +1,6 @@
 # Repository agents guide
 
-This repository contains an Apache Airflow provider for Box (`src/box_airflow_provider`) plus a small test suite (`tests/`).
+This repository contains an Apache Airflow provider for Box (`src/airflow/providers/box`) plus a small test suite (`tests/`).
 
 ## Development setup
 
@@ -16,11 +16,11 @@ pdm run test
 
 ## Project layout
 
-- Provider code: `src/box_airflow_provider/`
-  - Hooks: `src/box_airflow_provider/hooks/`
-  - Operators: `src/box_airflow_provider/operators/`
-  - Sensors: `src/box_airflow_provider/sensors/`
-  - Triggers: `src/box_airflow_provider/triggers/`
+- Provider code: `src/airflow/providers/box/`
+  - Hooks: `src/airflow/providers/box/hooks/`
+  - Operators: `src/airflow/providers/box/operators/`
+  - Sensors: `src/airflow/providers/box/sensors/`
+  - Triggers: `src/airflow/providers/box/triggers/`
 - Tests: `tests/`
   - Shared fake Box backend: `tests/conftest.py` (`FakeBoxEnvironment`, `box_env` fixture)
   - Shared async test helpers: `tests/async_test_utils.py`
@@ -50,8 +50,8 @@ async def test_polling_loop_is_deterministic():
         ...
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="box_airflow_provider.triggers.box.asyncio.sleep",
-        to_thread_patch_target="box_airflow_provider.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
     )
 
     with cm():

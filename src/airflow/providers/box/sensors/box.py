@@ -8,8 +8,8 @@ from airflow.sdk.bases.sensor import BaseSensorOperator, PokeReturnValue
 from airflow.utils.context import Context
 from airflow.sdk.timezone import parse
 
-from box_airflow_provider.hooks.box import BoxHook
-from box_airflow_provider.triggers.box import BoxTrigger
+from airflow.providers.box.hooks.box import BoxHook
+from airflow.providers.box.triggers.box import BoxTrigger
 
 
 class BoxSensor(BaseSensorOperator):

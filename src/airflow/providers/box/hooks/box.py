@@ -42,33 +42,6 @@ class BoxHook(BaseHook):
     conn_type = "box"
     hook_name = "Box"
 
-    @staticmethod
-    def get_connection_form_widgets() -> dict[str, Any]:
-        """Returns connection widgets to add to connection form"""
-        from flask_appbuilder.fieldwidgets import BS3PasswordFieldWidget, BS3TextFieldWidget
-        from flask_babel import lazy_gettext
-        from wtforms import PasswordField, StringField
-
-        return {
-            "client_id": StringField(lazy_gettext("Client ID"), widget=BS3TextFieldWidget()),
-            "client_secret": PasswordField(lazy_gettext("Client Secret"), widget=BS3PasswordFieldWidget()),
-            "enterprise_id": PasswordField(lazy_gettext("Enterprise ID"), widget=BS3PasswordFieldWidget()),
-        }
-
-    @staticmethod
-    def get_ui_field_behaviour() -> dict:
-        """Returns custom field behaviour"""
-
-        return {
-            "hidden_fields": ["port", "password", "login", "schema", "host"],
-            "relabeling": {},
-            "placeholders": {
-                "client_id": "",
-                "client_secret": "",
-                "enterprise_id": ""
-            },
-        }
-
     def __init__(
             self,
             box_conn_id: str = default_conn_name,
@@ -86,7 +59,7 @@ class BoxHook(BaseHook):
 
         if self.box_conn_id and not self.client:
             conn = self.get_connection(self.box_conn_id)
-            extra = conn.get_extra_dejson()
+            extra = conn.extra_dejson
             client_id = extra['client_id']
             client_secret = extra['client_secret']
             enterprise_id = extra['enterprise_id']

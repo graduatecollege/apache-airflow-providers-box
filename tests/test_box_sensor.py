@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pendulum
 import pytest
-from box_airflow_provider.sensors.box import BoxSensor
+from airflow.providers.box.sensors.box import BoxSensor
 
 
 def _file_info(*, path: str, name: str = "f", object_id: str = "1", modified_at=None):

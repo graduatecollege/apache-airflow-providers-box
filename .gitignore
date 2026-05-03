@@ -8,6 +8,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .vscode/
+.junie/memory/
 
 # C extensions
 *.so

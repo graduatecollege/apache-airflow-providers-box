@@ -4,9 +4,9 @@ import pendulum
 
 from airflow.sdk import dag, task
 
-from box_airflow_provider.hooks.box import BoxHook
-from box_airflow_provider.operators.box import BoxDownloadOperator, BoxUploadOperator
-from box_airflow_provider.sensors.box import BoxSensor
+from airflow.providers.box.hooks.box import BoxHook
+from airflow.providers.box.operators.box import BoxDownloadOperator, BoxUploadOperator
+from airflow.providers.box.sensors.box import BoxSensor
 
 
 @dag(
