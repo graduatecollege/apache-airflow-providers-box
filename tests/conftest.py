@@ -263,7 +263,7 @@ def box_fake() -> FakeBoxEnvironment:
 
 
 def pytest_configure() -> None:
-    # Ensure `src/` is on `sys.path` so `airflow_providers_box` imports work when running pytest from repo root.
+    # Ensure `src/` is on `sys.path` so `airflow.providers.box` imports work when running pytest from repo root.
     project_root = Path(__file__).resolve().parents[1]
     src = project_root / "src"
     if str(src) not in sys.path:

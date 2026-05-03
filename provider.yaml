@@ -38,25 +38,25 @@ integrations:
 operators:
   - integration-name: Box
     python-modules:
-      - airflow_providers_box.operators.box
+      - airflow.providers.box.operators.box
 
 hooks:
   - integration-name: Box
     python-modules:
-      - airflow_providers_box.hooks.box
+      - airflow.providers.box.hooks.box
 
 sensors:
   - integration-name: Box
     python-modules:
-      - airflow_providers_box.sensors.box
+      - airflow.providers.box.sensors.box
 
 triggers:
   - integration-name: Box
     python-modules:
-      - airflow_providers_box.triggers.box
+      - airflow.providers.box.triggers.box
 
 connection-types:
-  - hook-class-name: airflow_providers_box.hooks.box.BoxHook
+  - hook-class-name: airflow.providers.box.hooks.box.BoxHook
     connection-type: box
     hook-name: Box
     conn-fields:

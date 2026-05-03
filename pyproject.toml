@@ -32,14 +32,14 @@ file = "README.md"
 content-type = "text/markdown"
 
 [project.entry-points.apache_airflow_provider]
-provider_info = "airflow_providers_box.get_provider_info:get_provider_info"
+provider_info = "airflow.providers.box.get_provider_info:get_provider_info"
 
 [tool.pdm.version]
 source = "scm"
-version_format = "src.airflow_providers_box.version:format_version"
+version_format = "src.airflow.providers.box.version:format_version"
 tag_filter = "v*"
 tag_regex = '^v(?P<version>\d+\.\d+\.\d+)$'
-write_to = "src/airflow_providers_box/_version.txt"
+write_to = "airflow/providers/box/_version.txt"
 
 
 [tool.pdm.scripts]

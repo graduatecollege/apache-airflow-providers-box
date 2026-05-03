@@ -50,8 +50,8 @@ async def test_polling_loop_is_deterministic():
         ...
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
     )
 
     with cm():
