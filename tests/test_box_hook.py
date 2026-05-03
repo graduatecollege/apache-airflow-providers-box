@@ -22,7 +22,7 @@ def hook_with_fake(box_fake):
 
 def test_get_conn_creates_client_and_caches(hook):
     conn = MagicMock()
-    conn.get_extra_dejson.return_value = {
+    conn.extra_dejson = {
         "client_id": "cid",
         "client_secret": "csecret",
         "enterprise_id": "eid",
@@ -42,7 +42,7 @@ def test_get_conn_creates_client_and_caches(hook):
 
 def test_get_conn_raises_for_missing_credentials(hook):
     conn = MagicMock()
-    conn.get_extra_dejson.return_value = {
+    conn.extra_dejson = {
         "client_id": "",
         "client_secret": "csecret",
         "enterprise_id": "eid",
