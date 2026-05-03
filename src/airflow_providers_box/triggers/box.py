@@ -10,8 +10,8 @@ import pendulum
 from airflow.triggers.base import BaseTrigger, TriggerEvent
 from airflow.sdk.timezone import parse
 
-from airflow.providers.box.hooks.box import BoxHook, BoxFileInfo
-from airflow.providers.box.models import BoxTriggerEventData
+from airflow_providers_box.hooks.box import BoxHook, BoxFileInfo
+from airflow_providers_box.models import BoxTriggerEventData
 
 
 class BoxTrigger(BaseTrigger):
@@ -41,7 +41,7 @@ class BoxTrigger(BaseTrigger):
     def serialize(self) -> tuple[str, dict[str, Any]]:
         """Serialize BoxTrigger arguments and classpath."""
         return (
-            "airflow.providers.box.triggers.box.BoxTrigger",
+            "airflow_providers_box.triggers.box.BoxTrigger",
             {
                 "path": self.path,
                 "file_pattern": self.file_pattern,

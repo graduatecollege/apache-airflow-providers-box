@@ -37,30 +37,30 @@ def get_provider_info():
         "operators": [
             {
                 "integration-name": "Box",
-                "python-modules": ["airflow.providers.box.operators.box"],
+                "python-modules": ["airflow_providers_box.operators.box"],
             }
         ],
         "hooks": [
             {
                 "integration-name": "Box",
-                "python-modules": ["airflow.providers.box.hooks.box"],
+                "python-modules": ["airflow_providers_box.hooks.box"],
             }
         ],
         "sensors": [
             {
                 "integration-name": "Box",
-                "python-modules": ["airflow.providers.box.sensors.box"],
+                "python-modules": ["airflow_providers_box.sensors.box"],
             }
         ],
         "triggers": [
             {
                 "integration-name": "Box",
-                "python-modules": ["airflow.providers.box.triggers.box"],
+                "python-modules": ["airflow_providers_box.triggers.box"],
             }
         ],
         "connection-types": [
             {
-                "hook-class-name": "airflow.providers.box.hooks.box.BoxHook",
+                "hook-class-name": "airflow_providers_box.hooks.box.BoxHook",
                 "connection-type": "box",
                 "hook-name": "Box",
                 "conn-fields": {

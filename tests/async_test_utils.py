@@ -50,7 +50,7 @@ def patched_asyncio_for_tests(
     - `asyncio.to_thread` is replaced with an awaitable that calls the function synchronously.
 
     `sleep_patch_target` / `to_thread_patch_target` allow patching the module-under-test, e.g.
-    `"airflow.providers.box.triggers.box.asyncio.sleep"`.
+    `"airflow_providers_box.triggers.box.asyncio.sleep"`.
     """
 
     controller = SleepController()

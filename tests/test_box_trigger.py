@@ -7,8 +7,8 @@ from datetime import datetime, timezone
 import pendulum
 import pytest
 
-from airflow.providers.box.hooks.box import BoxHook
-from airflow.providers.box.triggers.box import BoxTrigger
+from airflow_providers_box.hooks.box import BoxHook
+from airflow_providers_box.triggers.box import BoxTrigger
 
 from tests.async_test_utils import patched_asyncio_for_tests
 
@@ -35,8 +35,8 @@ async def test_run_with_pattern_no_files_continues_to_sleep(box_fake):
     trigger = BoxTrigger(path="/data", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_fake))
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         await _assert_trigger_sleeps(trigger, controller)
@@ -49,8 +49,8 @@ async def test_run_with_pattern_files_dont_match_continues_to_sleep(box_fake):
     trigger = BoxTrigger(path="/data", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_fake))
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         await _assert_trigger_sleeps(trigger, controller)
@@ -70,8 +70,8 @@ async def test_run_with_pattern_matching_files_but_older_continues_to_sleep(box_
     )
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         await _assert_trigger_sleeps(trigger, controller)
@@ -91,8 +91,8 @@ async def test_run_with_pattern_matching_files_and_newer_triggers(box_fake):
     )
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         gen = trigger.run()
@@ -108,8 +108,8 @@ async def test_run_folder_does_not_exist_triggers_error(box_fake):
     trigger = BoxTrigger(path="/missing", file_pattern="*.csv", poke_interval=0.01, hook=_hook_for(box_fake))
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         gen = trigger.run()
@@ -137,8 +137,8 @@ async def test_run_initially_older_then_updated_triggers(box_fake):
     )
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         gen = trigger.run()
@@ -161,8 +161,8 @@ async def test_run_without_pattern_file_not_found_continues_to_sleep(box_fake):
     trigger = BoxTrigger(path="/data/x.txt", file_pattern="", poke_interval=0.01, hook=_hook_for(box_fake))
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         await _assert_trigger_sleeps(trigger, controller)
@@ -180,8 +180,8 @@ async def test_run_without_pattern_file_exists_and_newer_triggers(box_fake):
     )
 
     cm, controller = patched_asyncio_for_tests(
-        sleep_patch_target="airflow.providers.box.triggers.box.asyncio.sleep",
-        to_thread_patch_target="airflow.providers.box.triggers.box.asyncio.to_thread",
+        sleep_patch_target="airflow_providers_box.triggers.box.asyncio.sleep",
+        to_thread_patch_target="airflow_providers_box.triggers.box.asyncio.to_thread",
     )
     with cm():
         gen = trigger.run()

@@ -59,7 +59,7 @@ class BoxHook(BaseHook):
 
         if self.box_conn_id and not self.client:
             conn = self.get_connection(self.box_conn_id)
-            extra = conn.extra_dejson
+            extra = conn.get_extra_dejson()
             client_id = extra['client_id']
             client_secret = extra['client_secret']
             enterprise_id = extra['enterprise_id']

@@ -7,14 +7,14 @@ import pytest
 
 @pytest.fixture()
 def hook():
-    from airflow.providers.box.hooks.box import BoxHook
+    from airflow_providers_box.hooks.box import BoxHook
 
     return BoxHook(box_conn_id="box_default")
 
 
 @pytest.fixture()
 def hook_with_fake(box_fake):
-    from airflow.providers.box.hooks.box import BoxHook
+    from airflow_providers_box.hooks.box import BoxHook
 
     # noinspection PyTypeChecker
     return BoxHook(client_factory=box_fake.client)
@@ -202,7 +202,7 @@ def test_delete_file_by_id_and_by_path(hook_with_fake, box_fake):
 
 
 def test_box_file_to_file_info_path_collection_builds_path(box_fake):
-    from airflow.providers.box.hooks.box import box_file_to_file_info
+    from airflow_providers_box.hooks.box import box_file_to_file_info
 
     file_id = box_fake.seed_file("/A/B/n.txt", size=0)
     box_file = box_fake.get_file_by_id(file_id)

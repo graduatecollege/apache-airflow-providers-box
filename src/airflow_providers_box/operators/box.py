@@ -2,7 +2,7 @@ from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.utils.context import Context
 
-from airflow.providers.box.hooks.box import BoxHook, BoxFileInfo
+from airflow_providers_box.hooks.box import BoxHook, BoxFileInfo
 
 
 class BoxUploadOperator(BaseOperator):
