@@ -4,6 +4,7 @@ build-backend = "pdm.backend"
 
 [project]
 name = "apache-airflow-providers-box"
+version = "2.0.1"
 authors = [
     { name = "Mikael Arvola", email = "marvel@illinois.edu" },
 ]
@@ -15,9 +16,7 @@ classifiers = [
     "Framework :: Apache Airflow",
     "Framework :: Apache Airflow :: Provider",
 ]
-dynamic = [
-    "version"
-]
+
 requires-python = "~=3.12.0"
 dependencies = [
     "apache-airflow>=3",
@@ -40,7 +39,7 @@ source = "scm"
 version_format = "src.airflow_providers_box.version:format_version"
 tag_filter = "v*"
 tag_regex = '^v(?P<version>\d+\.\d+\.\d+)$'
-write_to = "airflow_providers_box/_version.txt"
+write_to = "src/airflow_providers_box/_version.txt"
 
 
 [tool.pdm.scripts]
