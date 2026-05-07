@@ -1,6 +1,6 @@
 from airflow.exceptions import AirflowException
-from airflow.models import BaseOperator
-from airflow.utils.context import Context
+from airflow.sdk.bases.operator import BaseOperator
+from airflow.sdk.definitions.context import Context
 
 from airflow.providers.box.hooks.box import BoxHook, BoxFileInfo
 
