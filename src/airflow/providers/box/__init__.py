@@ -1,4 +1,5 @@
 # read version from version.txt
 from os import path
 
-__version__ = open(path.join(path.dirname(__file__), "_version.txt")).read().strip()
+with open(path.join(path.dirname(__file__), "_version.txt")) as _f:
+    __version__ = _f.read().strip()

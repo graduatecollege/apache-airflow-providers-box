@@ -5,7 +5,7 @@ import pendulum
 from airflow.configuration import conf
 from airflow.exceptions import AirflowException
 from airflow.sdk.bases.sensor import BaseSensorOperator, PokeReturnValue
-from airflow.utils.context import Context
+from airflow.sdk.definitions.context import Context
 from airflow.sdk.timezone import parse
 
 from airflow.providers.box.hooks.box import BoxHook
