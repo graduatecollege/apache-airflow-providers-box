@@ -81,6 +81,12 @@ class BoxTrigger(BaseTrigger):
         - If newer_than datetime was provided, it checks the file's last modified time.
         """
         hook = self.hook or BoxHook(self.box_conn_id)
+        # Pre-initialize the hook's connection so that BaseHook.get_connection()
+        # is never called from within asyncio.to_thread(). In Airflow 3.2 the
+        # triggerer communicates with the API server over a framed channel that
+        # is not thread-safe; calling get_connection() from a thread-pool thread
+        # corrupts frame ordering and crashes the triggerer.
+        hook.get_conn()
         if isinstance(self.newer_than, str):
             self.newer_than = parse(self.newer_than)
         _newer_than = pendulum.instance(self.newer_than) if self.newer_than else None
