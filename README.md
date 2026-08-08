@@ -14,5 +14,5 @@ of this product are 2028-08-31.
 End-of-Life was decided upon based on these dependencies:
 
 - Box SDK Gen (v10+): [Box SDK v10 EOL is TBD](https://github.com/box/box-python-sdk?tab=readme-ov-file#versioning)
-- Apache Airflow 3.21: TBD
+- Apache Airflow 3.2.x: TBD
 - Python 3.12: 2028-08-31
