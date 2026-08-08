@@ -1,0 +1,41 @@
+version: 2
+
+updates:
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: direct
+    groups:
+      airflow-core:
+        patterns:
+          - apache-airflow
+      provider-runtime:
+        dependency-type: production
+        patterns:
+          - "*"
+        exclude-patterns:
+          - apache-airflow
+      testing-framework:
+        patterns:
+          - pytest
+          - pytest-*
+      development-tooling:
+        dependency-type: development
+        patterns:
+          - "*"
+        exclude-patterns:
+          - pytest
+          - pytest-*
+
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns:
+          - "*"
