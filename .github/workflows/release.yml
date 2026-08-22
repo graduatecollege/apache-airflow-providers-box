@@ -32,7 +32,7 @@ jobs:
           python-version: '3.12'
 
       - name: Setup PDM
-        uses: pdm-project/setup-pdm@973541a5febeafcfdadf8a51211435be6ecfd90f # ratchet:pdm-project/setup-pdm@v4.5
+        uses: pdm-project/setup-pdm@544d7237314ee09c256785bd360f6b30add38b37 # ratchet:pdm-project/setup-pdm@v4.6
 
       - name: Install dev dependencies
         run: |
@@ -57,7 +57,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7
 
       - name: Setup PDM
-        uses: pdm-project/setup-pdm@973541a5febeafcfdadf8a51211435be6ecfd90f # ratchet:pdm-project/setup-pdm@v4.5
+        uses: pdm-project/setup-pdm@544d7237314ee09c256785bd360f6b30add38b37 # ratchet:pdm-project/setup-pdm@v4.6
 
       - name: Install build dependencies
         run: |
