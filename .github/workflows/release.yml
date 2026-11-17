@@ -29,7 +29,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # ratchet:actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.14'
 
       - name: Setup PDM
         uses: pdm-project/setup-pdm@544d7237314ee09c256785bd360f6b30add38b37 # ratchet:pdm-project/setup-pdm@v4.6
@@ -58,6 +58,8 @@ jobs:
 
       - name: Setup PDM
         uses: pdm-project/setup-pdm@544d7237314ee09c256785bd360f6b30add38b37 # ratchet:pdm-project/setup-pdm@v4.6
+        with:
+          python-version: '3.14'
 
       - name: Install build dependencies
         run: |
