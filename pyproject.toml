@@ -52,6 +52,9 @@ write_to = "airflow/providers/box/_version.txt"
 [tool.pdm.scripts]
 test = "pytest --timeout=5"
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
